@@ -4,7 +4,7 @@ extends Node2D
 const chunk_scene: Resource = preload("res://scenes/Chunk_tile.tscn")
 const folderPath: String = "C:/Users/Henrique/Documents/Dev/Go/MapEditor/chunks/"
 
-#Editor
+# Editor
 const emptyChunkPath: String = folderPath + "emptyChunk.dat"
 var emptyChunkTemplate: PackedByteArray
 
