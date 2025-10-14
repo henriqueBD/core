@@ -1,0 +1,23 @@
+[gd_scene load_steps=4 format=3 uid="uid://p22pqxsrvqus"]
+
+[ext_resource type="Script" uid="uid://cqnx0060bfqfg" path="res://scripts/camera_follow.gd" id="1_lnu2h"]
+[ext_resource type="PackedScene" uid="uid://c53auncdmtksg" path="res://scenes/chunk.tscn" id="2_yqjtg"]
+[ext_resource type="PackedScene" uid="uid://bpytpor8ff704" path="res://scenes/player.tscn" id="3_lnu2h"]
+
+[node name="Game" type="Node2D"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(24, 22)
+zoom = Vector2(3, 3)
+script = ExtResource("1_lnu2h")
+
+[node name="Chunk" parent="." instance=ExtResource("2_yqjtg")]
+position = Vector2(-105, -109)
+chunksVertical = 2
+chunksHorizontal = 2
+chunks_load_radius = 1
+break_radius = 10
+
+[node name="Player" parent="." instance=ExtResource("3_lnu2h")]
+position = Vector2(17, -24)
+gravity_ammount = 1.0
