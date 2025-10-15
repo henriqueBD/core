@@ -39,9 +39,7 @@ var _external_acell: Vector2
 var _horizontal_input: float
 var _vertical_input: float
 var _delta_time: float
-var _looking_foward: bool = true
 
-var _try_tunelling_end_ms: int
 var _should_try_tunnel: bool
 var _is_tunneling: bool
 

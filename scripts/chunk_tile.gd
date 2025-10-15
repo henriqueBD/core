@@ -441,7 +441,7 @@ func _save_entities() -> void:
 	if len(entities.id) > 0:
 		ResourceSaver.save(entities, "res://entities_map/" + str(coords.x) + "-" + str(coords.y) + ".res")
 
-func _exit_tree() -> void:
+func unload() -> void:
 	if changed_entities:
 		print("Saving chunk entities: " + str(coords))
 		_save_entities()

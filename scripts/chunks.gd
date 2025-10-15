@@ -11,6 +11,7 @@ var emptyChunkTemplate: PackedByteArray
 @onready var player: player_character = get_node("../Player")
 
 @export var chunks_load_radius: int = 3
+@export var save_on_exit: bool
 
 var chunksDict: Dictionary[Vector2i, chunk_tile] = {}
 var chunksBuffDict: Dictionary[Vector2i, bool]
@@ -65,18 +66,29 @@ func load_chunk(load_coords: Vector2i) -> void:
 	add_objects(newChunk, entities)
 
 func unload_chunk(unloadCoords: Vector2i) -> void:
-	print("unloading " + str(unloadCoords))
-	if chunksDict.has(unloadCoords):
-		var chunk_to_remove: chunk_tile = chunksDict[unloadCoords]
-		chunksDict.erase(unloadCoords)
-		chunk_to_remove.queue_free()
+	if !chunksDict.has(unloadCoords): return
+	var chunk_to_remove: chunk_tile = chunksDict[unloadCoords]
+	
+	if save_on_exit:
+		print("unloading and saving " + str(unloadCoords))
+	else:
+		print("unloading " + str(unloadCoords))
+		chunk_to_remove._terrain_really_changed = false
+		chunk_to_remove.changed_terrain = false
+		chunk_to_remove.changed_entities = false
+	
+	chunk_to_remove.unload()
+	chunksDict.erase(unloadCoords)
+	chunk_to_remove.queue_free()
 
 func is_chunk_in_bounds(check: Vector2i) -> bool:
 	return FileAccess.file_exists(get_chunk_path(check))
 
 func world_to_chunk_key(world_pos: Vector2) -> Vector2i:
-	#return Vector2i((world_pos.x - self.position.x) / Global.CHUNK_SIDE , (world_pos.y - self.position.y) / Global.CHUNK_SIDE)
-	return Vector2i(world_pos.x / Global.CHUNK_SIDE , world_pos.y / Global.CHUNK_SIDE)
+	return Vector2i(
+		int(world_pos.x / Global.CHUNK_SIDE), 
+		int(world_pos.y / Global.CHUNK_SIDE)
+	)
 
 func world_to_chunk(world_pos: Vector2) -> chunk_tile:
 	var key: Vector2i = world_to_chunk_key(world_pos)
@@ -231,3 +243,7 @@ func createEmptyChunk(new_chunk_pos: Vector2i) -> void:
 	chunksDict[new_chunk_pos] = newChunk
 
 #endregion
+
+func _exit_tree() -> void:
+	for k: Vector2i in chunksDict.keys():
+		unload_chunk(k)
