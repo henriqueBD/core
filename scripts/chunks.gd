@@ -1,3 +1,4 @@
+@tool
 class_name chunk_mng
 extends Node2D
 
@@ -16,8 +17,8 @@ var emptyChunkTemplate: PackedByteArray
 var chunksDict: Dictionary[Vector2i, chunk_tile] = {}
 var chunksBuffDict: Dictionary[Vector2i, bool]
 
-var lastCurrChunkPlayer: Vector2i = Vector2i(-1, -1)
-var currChunkPlayer: Vector2i
+var _last_center_chunk: Vector2i = Vector2i(-1, -1)
+var _curr_center_chunk: Vector2i
 
 var id_to_name: Dictionary[int, String]
 var tile_sprites: Array[Image]
@@ -26,7 +27,11 @@ var tile_sprites: Array[Image]
 var should_mouse_break: bool = true
 
 func _enter_tree() -> void:
-	Global.chunks = self
+	if Engine.is_editor_hint():
+		late_ready()
+		load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
+	else:
+		Global.chunks = self
 
 func late_ready() -> void:
 	tile_sprites = [
@@ -181,16 +186,22 @@ func break_tiles(world_rect: Rect2, mining_force: int) -> void:
 		chunksDict[chunk_bottom_left].break_tiles(world_rect, mining_force)
 
 func _process(_delta: float) -> void:
-	currChunkPlayer = world_to_chunk_key(player.global_position)
-	
-	if currChunkPlayer == lastCurrChunkPlayer:
+	if Engine.is_editor_hint():
+		load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
+		pass
+	else:
+		load_nearby_chunks(player.global_position)
+
+func load_nearby_chunks(global_pos: Vector2) -> void:
+	_curr_center_chunk = world_to_chunk_key(global_pos)
+	if _curr_center_chunk == _last_center_chunk:
 		return
 	
-	lastCurrChunkPlayer = currChunkPlayer
+	_last_center_chunk = _curr_center_chunk
 	chunksBuffDict.clear()
 	
-	for x_offset: int in range(currChunkPlayer.x - chunks_load_radius, currChunkPlayer.x + chunks_load_radius + 1):
-		for y_offset: int in range(currChunkPlayer.y - chunks_load_radius, currChunkPlayer.y + chunks_load_radius + 1):
+	for x_offset: int in range(_curr_center_chunk.x - chunks_load_radius, _curr_center_chunk.x + chunks_load_radius + 1):
+		for y_offset: int in range(_curr_center_chunk.y - chunks_load_radius, _curr_center_chunk.y + chunks_load_radius + 1):
 			var chunk_to_check: Vector2i = Vector2i(x_offset, y_offset)
 			if is_chunk_in_bounds(chunk_to_check):
 				chunksBuffDict[chunk_to_check] = true

@@ -1,3 +1,4 @@
+@tool
 class_name chunk_tile
 extends Sprite2D
 

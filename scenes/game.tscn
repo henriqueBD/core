@@ -15,7 +15,7 @@ script = ExtResource("1_lnu2h")
 save_on_exit = false
 
 [node name="Player" parent="." instance=ExtResource("3_lnu2h")]
-position = Vector2(26, 68)
+position = Vector2(26, 78)
 gravity_amount = 1.7
 jump_force = 0.9
 coyote_time = 0.5
