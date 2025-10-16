@@ -28,6 +28,10 @@ gdscript/warnings/inferred_declaration=2
 
 window/size/always_on_top=true
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/map_editor/plugin.cfg")
+
 [input]
 
 ui_left={

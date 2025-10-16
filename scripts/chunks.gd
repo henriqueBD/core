@@ -9,7 +9,7 @@ const folderPath: String = "res://chunks/"
 const emptyChunkPath: String = folderPath + "emptyChunk.dat"
 var emptyChunkTemplate: PackedByteArray
 
-@onready var player: player_character = get_node("../Player")
+var player: player_character
 
 @export var chunks_load_radius: int = 3
 @export var save_on_exit: bool
@@ -26,14 +26,19 @@ var tile_sprites: Array[Image]
 #Debug only remove on release
 var should_mouse_break: bool = true
 
+var editor_stuff_active: bool = false
+
 func _enter_tree() -> void:
 	if Engine.is_editor_hint():
-		late_ready()
-		load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
+		if editor_stuff_active:
+			late_ready()
+			load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
 	else:
 		Global.chunks = self
 
 func late_ready() -> void:
+	if !Engine.is_editor_hint():
+		player = Global.player_node
 	tile_sprites = [
 		null,
 		Image.load_from_file("res://assets/sprites/terrain/dirt.png"), ##WILL NOT WORK ON SHIPPED GAME
@@ -49,7 +54,7 @@ func late_ready() -> void:
 	load_chunk(coords)
 
 func load_chunk(load_coords: Vector2i) -> void:
-	print("loading " + str(load_coords))
+	#print("loading " + str(load_coords))
 	
 	var newChunk: chunk_tile = chunk_scene.instantiate()
 	var entities: obj_chunk = newChunk.initialize(load_coords, tile_sprites, chunksDict)
@@ -77,7 +82,7 @@ func unload_chunk(unloadCoords: Vector2i) -> void:
 	if save_on_exit:
 		print("unloading and saving " + str(unloadCoords))
 	else:
-		print("unloading " + str(unloadCoords))
+		#print("unloading " + str(unloadCoords))
 		chunk_to_remove._terrain_really_changed = false
 		chunk_to_remove.changed_terrain = false
 		chunk_to_remove.changed_entities = false
@@ -187,8 +192,8 @@ func break_tiles(world_rect: Rect2, mining_force: int) -> void:
 
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
-		load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
-		pass
+		if editor_stuff_active:
+			load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
 	else:
 		load_nearby_chunks(player.global_position)
 
@@ -200,6 +205,8 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 	_last_center_chunk = _curr_center_chunk
 	chunksBuffDict.clear()
 	
+	var editor_msg: String = "Loading: "
+	
 	for x_offset: int in range(_curr_center_chunk.x - chunks_load_radius, _curr_center_chunk.x + chunks_load_radius + 1):
 		for y_offset: int in range(_curr_center_chunk.y - chunks_load_radius, _curr_center_chunk.y + chunks_load_radius + 1):
 			var chunk_to_check: Vector2i = Vector2i(x_offset, y_offset)
@@ -207,6 +214,13 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 				chunksBuffDict[chunk_to_check] = true
 				if not chunksDict.has(chunk_to_check):
 					load_chunk(chunk_to_check)
+					if Engine.is_editor_hint(): 
+						editor_msg += "({x}, {y}) ".format({"x": chunk_to_check.x, "y": chunk_to_check.y})
+	
+	if Engine.is_editor_hint(): 
+		if len(editor_msg) > 9: print(editor_msg)
+	
+	editor_msg = "Unloading: "
 	
 	var to_remove: Array[Vector2i] = []
 	for key: Vector2i in chunksDict.keys():
@@ -214,6 +228,11 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 			to_remove.append(key)
 	for key: Vector2i in to_remove:
 		unload_chunk(key)
+		if Engine.is_editor_hint(): 
+			editor_msg += "({x}, {y}) ".format({"x": key.x, "y": key.y})
+	
+	if Engine.is_editor_hint(): 
+		if len(editor_msg) > 11: print(editor_msg)
 
 func add_object_chunk(global_pos: Vector2, obj: Node2D, obj_id: int) -> void:
 	var chunk_to_add: chunk_tile = world_to_chunk(global_pos)
@@ -256,5 +275,8 @@ func createEmptyChunk(new_chunk_pos: Vector2i) -> void:
 #endregion
 
 func _exit_tree() -> void:
+	unload_all_chunks()
+
+func unload_all_chunks() -> void:
 	for k: Vector2i in chunksDict.keys():
 		unload_chunk(k)
