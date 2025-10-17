@@ -71,6 +71,7 @@ func load_chunk(load_coords: Vector2i) -> void:
 	
 	add_child(newChunk)
 	chunksDict[load_coords] = newChunk
+	newChunk.owner = self
 	
 	if entities == null: return
 	add_objects(newChunk, entities)
@@ -93,6 +94,9 @@ func unload_chunk(unloadCoords: Vector2i) -> void:
 
 func is_chunk_in_bounds(check: Vector2i) -> bool:
 	return FileAccess.file_exists(get_chunk_path(check))
+
+func is_chunk_loaded(world_point: Vector2) -> bool:
+	return chunksDict.has(world_to_chunk_key(world_point))
 
 func world_to_chunk_key(world_pos: Vector2) -> Vector2i:
 	return Vector2i(
@@ -139,6 +143,12 @@ func raycast_general_world(world_pos_start: Vector2, world_pos_end: Vector2) -> 
 	return chunk_point.ray_cast_general(world_pos_start, world_pos_end)
 
 #endregion
+
+func is_tile_air(world_point: Vector2) -> bool:
+	var point_key: Vector2i = world_to_chunk_key(world_point)
+	if !chunksDict.has(point_key): return true
+	var chunk_to_check: chunk_tile = chunksDict[point_key]
+	return chunk_to_check._get_tilev(chunk_to_check.world_to_grid(world_point)) == 0
 
 func breakTiless(world_rect: Rect2) -> void:
 	var top_left: Vector2 = world_rect.position

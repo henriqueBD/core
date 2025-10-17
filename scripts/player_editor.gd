@@ -1,10 +1,10 @@
 class_name Editor
 extends CanvasItem
 
-@export var break_radius: int = 20
+static var break_radius: int = 20
 
 @onready var parent: Node2D = self.get_parent()
-@onready var chunk: chunk_mng = $"../../Chunk"
+static var chunk: chunk_mng
 
 enum EDITOR_STATE {
 	unreachable,
@@ -14,22 +14,22 @@ enum EDITOR_STATE {
 	add_chunk,
 }
 
-var curr_update: EDITOR_STATE = EDITOR_STATE.place_obj
-var is_active: bool = false
+static var curr_update: EDITOR_STATE = EDITOR_STATE.place_obj
+static var is_active: bool = false
 const objs_path: String = "res://entities/"
 
 const num_tiles: int = 5
 
-var F_U: Area2D
+static var F_U: Area2D
 
-var curr_obj_index: int = 0
-var curr_obj: PackedScene
-var curr_obj_instance: Node2D
+static var curr_obj_index: int = 0
+static var curr_obj: PackedScene
+static var curr_obj_instance: Node2D
 
-var obj_name_list: Array[String]
-var obj_name_hash: Array[int]
+static var obj_name_list: Array[String]
+static var obj_name_hash: Array[int]
 
-var cursor_position: Vector2
+static var cursor_position: Vector2
 
 func _ready() -> void:
 	if OS.has_feature("editor"):
@@ -53,6 +53,7 @@ func _ready() -> void:
 		file_name = dir.get_next()
 	dir.list_dir_end()
 	print(obj_name_hash)
+	chunk = Global.chunks
 	chunk.id_to_name = id_to_name_tmp
 	chunk.late_ready()
 
@@ -86,7 +87,7 @@ func update() -> void:
 		EDITOR_STATE.delete_obj:
 			delete_object()
 		EDITOR_STATE.terraform:
-			terraform()
+			_terraform_game()
 		EDITOR_STATE.add_chunk:
 			add_chunk()
 
@@ -157,13 +158,23 @@ func move_object() -> void:
 
 ## TERRAFORM
 
-var curr_tile_index: int = 0
-var tile_hot_bar: Array[int] = [0, 1, 2, 3 ,4 ,5 ,6 ,7 ,8 ,9]
+static var curr_tile_index: int = 0
+static var tile_hot_bar: Array[int] = [0, 1, 2, 3 ,4 ,5 ,6 ,7 ,8 ,9]
 const hot_bar: Array[int] = [KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9]
 
-func terraform() -> void:
-	if Input.is_action_just_pressed("scroll_up"):
-		if Input.is_key_pressed(KEY_SHIFT):
+func _terraform_game() -> void:
+	terraform(
+		Input.is_action_just_pressed("scroll_up"), 
+		Input.is_action_just_pressed("scroll_down"),
+		Input.is_key_pressed(KEY_SHIFT),
+		Input.is_action_pressed("place_object"),
+		cursor_position
+	)
+
+static func terraform(scroll_up: bool, scroll_down: bool, shift: bool, 
+	mouse_hold: bool, cursor_pos: Vector2, b_radius: int = break_radius, chunk_m: chunk_mng = chunk) -> void:
+	if scroll_up:
+		if shift:
 			break_radius += 1
 			break_radius = min(255, break_radius)
 			print("Brush radius: " + str(break_radius))
@@ -172,8 +183,8 @@ func terraform() -> void:
 			if curr_tile_index == num_tiles:
 				curr_tile_index = 0
 			print("curr tile: " + chunk_tile.TILE_TYPE.keys()[curr_tile_index])
-	elif Input.is_action_just_pressed("scroll_down"):
-		if Input.is_key_pressed(KEY_SHIFT):
+	elif scroll_down:
+		if shift:
 			break_radius -= 1
 			break_radius = max(1, break_radius)
 			print("Brush radius: " + str(break_radius))
@@ -185,7 +196,7 @@ func terraform() -> void:
 	
 	for key: int in range(9):
 		if Input.is_key_pressed(hot_bar[key]):
-			if Input.is_key_pressed(KEY_SHIFT):
+			if shift:
 				if tile_hot_bar[key] != curr_tile_index:
 					tile_hot_bar[key] = curr_tile_index
 					print(chunk_tile.TILE_TYPE.keys()[curr_tile_index] + " added to shortcut KEY" + str(key))
@@ -194,15 +205,15 @@ func terraform() -> void:
 					curr_tile_index = tile_hot_bar[key]
 					print("curr tile: " + chunk_tile.TILE_TYPE.keys()[curr_tile_index])
 	
-	if Input.is_action_pressed("place_object"):
+	if mouse_hold:
 		if curr_tile_index < 0 or curr_tile_index >= num_tiles:
 			print("Invalid tile index: " + str(curr_tile_index))
 			return
-		var brush_size: Vector2 = Vector2(break_radius, break_radius)
+		var brush_size: Vector2 = Vector2(b_radius, b_radius)
 		if Input.is_key_pressed(KEY_ALT):
-			chunk.change_tiles(Rect2(cursor_position - brush_size / 2, brush_size), 0)
+			chunk_m.change_tiles(Rect2(cursor_pos - brush_size / 2, brush_size), 0)
 		else:
-			chunk.change_tiles(Rect2(cursor_position - brush_size / 2, brush_size), curr_tile_index)
+			chunk_m.change_tiles(Rect2(cursor_pos - brush_size / 2, brush_size), curr_tile_index)
 
 func terraform_render() -> void:
 	var icon_size: Vector2 = Vector2(break_radius, break_radius)
@@ -229,8 +240,3 @@ func hash_string_to_int_sha256(input: String) -> int:
 		int_value = (int_value << 8) | hash_res[i]
 	
 	return int_value
-
-func _draw() -> void:
-	match curr_update:
-		EDITOR_STATE.terraform:
-			terraform_render()
