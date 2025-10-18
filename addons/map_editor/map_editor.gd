@@ -136,6 +136,7 @@ func _on_scene_changed(scene_root: Node) -> void:
 	print("chenged scene")
 	if str(scene_root.name) != TARGET_SCENE_PATH:
 		print("Not same path")
+		unload_stuff()
 		_same_scene = false
 	else:
 		_same_scene = true
@@ -146,7 +147,10 @@ func _on_scene_changed(scene_root: Node) -> void:
 	_check_if_should_update()
 
 func _check_if_should_update() -> void:
+	var before_update: bool = _should_update
 	_should_update = _same_scene and _same_workplace
+	if _should_update and !before_update:
+		print("Updating now")
 
 func unload_stuff() -> void:
 	if not _chunks: return
