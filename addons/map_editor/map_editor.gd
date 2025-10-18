@@ -111,7 +111,8 @@ func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
 var brush_size_pixels: int = 20
 
 func _terraform_draw(viewport_control: Control) -> void:
-	viewport_control.draw_circle(viewport_control.get_local_mouse_position(), 64, Color.from_rgba8(255, 0, 255, 100))
+	#viewport_control.draw_circle(viewport_control.get_local_mouse_position(), 64, Color.from_rgba8(255, 0, 255, 100))
+	pass
 
 func _on_work_place_changed(screen_name: String) -> void:
 	if screen_name != "2D": 
