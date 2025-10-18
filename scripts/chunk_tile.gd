@@ -28,10 +28,10 @@ const TILE_DURABILITY: PackedByteArray = [
 
 var edge_colors: Array[Color] = [
 	Color.from_rgba8(0, 0, 0, 0),
-	Color.from_rgba8(122, 71, 53),
-	Color.from_rgba8(91, 109, 109),
-	Color.from_rgba8(255, 254, 161),
-	Color.from_rgba8(153, 76, 204)
+	Color.from_rgba8(122, 71, 53, 255),
+	Color.from_rgba8(91, 109, 109, 255),
+	Color.from_rgba8(255, 254, 161, 255),
+	Color.from_rgba8(153, 76, 204, 255)
 ]
 
 func initialize(c: Vector2i, sprite_array: Array[Image], dict_chunks: Dictionary[Vector2i, chunk_tile], data_empty: PackedByteArray = []) -> obj_chunk:
