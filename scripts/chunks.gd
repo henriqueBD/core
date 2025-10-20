@@ -279,7 +279,7 @@ func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 	chunk_to_add.changed_entities = false
 
 static func get_chunk_path(chunk_coords: Vector2i) -> String:
-	return folderPath + str(chunk_coords.x) + "-" + str(chunk_coords.y) + ".dat"
+	return folderPath + str(chunk_coords.x) + "_" + str(chunk_coords.y) + ".dat"
 
 #region editor
 
