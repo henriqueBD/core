@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="terrain_type_base" load_steps=3 format=3 uid="uid://s3t8ywjsopsw"]
+
+[ext_resource type="Script" uid="uid://0jaudmxqm274" path="res://terrain_types/_terrain_type_base.gd" id="1_mbnpj"]
+[ext_resource type="Texture2D" uid="uid://hlfdpc23hx17" path="res://assets/sprites/terrain/dirt.png" id="2_fn5gb"]
+
+[resource]
+script = ExtResource("1_mbnpj")
+sprite = ExtResource("2_fn5gb")
+edge_color = Color(0.47843137, 0.2784314, 0.20784314, 1)
+durability = 1
+metadata/_custom_type_script = "uid://0jaudmxqm274"

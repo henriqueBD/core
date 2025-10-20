@@ -18,22 +18,6 @@ enum TILE_TYPE { AIR, dirt, stone, gold, clovium }
 
 enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
 
-const TILE_DURABILITY: PackedByteArray = [
-	0, # AIR
-	1, # DIRT
-	2, # STONE
-	1, # GOLD_PURE
-	1, # CLOVIUM
-]
-
-var edge_colors: Array[Color] = [
-	Color.from_rgba8(0, 0, 0, 0),
-	Color.from_rgba8(122, 71, 53, 255),
-	Color.from_rgba8(91, 109, 109, 255),
-	Color.from_rgba8(255, 254, 161, 255),
-	Color.from_rgba8(153, 76, 204, 255)
-]
-
 func initialize(c: Vector2i, sprite_array: Array[Image], dict_chunks: Dictionary[Vector2i, chunk_tile], data_empty: PackedByteArray = []) -> obj_chunk:
 	_chunks_loaded = dict_chunks
 	_tile_sprites = sprite_array
@@ -56,10 +40,10 @@ func initialize(c: Vector2i, sprite_array: Array[Image], dict_chunks: Dictionary
 	for i: int in range(data.size()):
 		var grid_img_coords: Vector2i = Vector2i(i % Global.CHUNK_SIDE, i / Global.CHUNK_SIDE)
 		if data[i] == TILE_TYPE.AIR: 
-			img.set_pixelv(grid_img_coords, edge_colors[0])
+			img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[0])
 			continue
 		if !_has_same_neighborsv(grid_img_coords):
-			img.set_pixelv(grid_img_coords, edge_colors[data[i]])
+			img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[data[i]])
 		else:
 			img.set_pixelv(
 				grid_img_coords, 
@@ -111,10 +95,10 @@ func _fix_borders_helper(coord_tmp: Vector2i) -> void:
 	assert(is_grid_pos_in_bounds(coord_tmp))
 	var target_type: TILE_TYPE = _get_tilev(coord_tmp)
 	if target_type == TILE_TYPE.AIR: return
-	if !_has_same_neighborsv(coord_tmp) and img.get_pixelv(coord_tmp) != edge_colors[target_type]:
+	if !_has_same_neighborsv(coord_tmp) and img.get_pixelv(coord_tmp) != chunk_mng.tile_edge_colors[target_type]:
 		_terrain_really_changed = true
-		img.set_pixelv(coord_tmp, edge_colors[target_type])
-	elif img.get_pixelv(coord_tmp) == edge_colors[target_type]:
+		img.set_pixelv(coord_tmp, chunk_mng.tile_edge_colors[target_type])
+	elif img.get_pixelv(coord_tmp) == chunk_mng.tile_edge_colors[target_type]:
 		_terrain_really_changed = true
 		img.set_pixelv(
 			coord_tmp, 
@@ -228,12 +212,12 @@ func _get_tile_safe(x: int, y: int) -> TILE_TYPE:
 var _terrain_really_changed: bool
 
 func _change_single_tile(gridPos: Vector2i, new_type: TILE_TYPE) -> void:
-	if _get_tilev(gridPos) == new_type and img.get_pixelv(gridPos) != edge_colors[new_type]:
+	if _get_tilev(gridPos) == new_type and img.get_pixelv(gridPos) != chunk_mng.tile_edge_colors[new_type]:
 		return
 	_terrain_really_changed = true
 	_set_tilev(gridPos, new_type)
 	if new_type == TILE_TYPE.AIR:
-		img.set_pixelv(gridPos, edge_colors[0])
+		img.set_pixelv(gridPos, chunk_mng.tile_edge_colors[0])
 	else: img.set_pixelv(
 		gridPos, 
 		_tile_sprites[new_type].get_pixelv(Vector2i((gridPos)) % _tile_sprites[new_type].get_size())
@@ -254,7 +238,7 @@ func _recalculate_area(recalculate_rect: Rect2) -> void:
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
 			if _get_tile(x_pos, y_pos) == TILE_TYPE.AIR: continue
 			if !_has_same_neighbors(x_pos, y_pos):
-				img.set_pixel(x_pos, y_pos, edge_colors[_get_tile(x_pos, y_pos)])
+				img.set_pixel(x_pos, y_pos, chunk_mng.tile_edge_colors[_get_tile(x_pos, y_pos)])
 
 func change_tiles(destroy_rect_world: Rect2, new_type: TILE_TYPE) -> void:
 	_terrain_really_changed = false
@@ -290,7 +274,7 @@ func break_tiles(destroy_rect_world: Rect2, mining_force: int) -> void:
 	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
 			var tile_to_break: TILE_TYPE = _get_tile(x_pos, y_pos)
-			if tile_to_break == TILE_TYPE.AIR or TILE_DURABILITY[tile_to_break] > mining_force:
+			if tile_to_break == TILE_TYPE.AIR or chunk_mng.tile_durability[tile_to_break] > mining_force:
 				continue
 			_terrain_really_changed = true
 			_set_tile(x_pos, y_pos, TILE_TYPE.AIR)
@@ -320,7 +304,7 @@ func eval_area(global_rect: Rect2, mining_force: int) -> Vector2:
 			tile_tmp = _get_tile_safe(x_pos, y_pos)
 			if tile_tmp != TILE_TYPE.AIR:
 				tiles_dir += Vector2(x_pos, y_pos) - rect_center
-				if TILE_DURABILITY[int(tile_tmp)] > mining_force:
+				if chunk_mng.tile_durability[int(tile_tmp)] > mining_force:
 					stronger_tiles_dir += Vector2(x_pos, y_pos) - rect_center
 	
 	return Vector2(

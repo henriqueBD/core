@@ -81,9 +81,6 @@ func _handles(object: Object) -> bool:
 func _forward_canvas_gui_input(event: InputEvent) -> bool:
 	var mouse_pos: Vector2 = EditorInterface.get_editor_viewport_2d().get_mouse_position()
 	
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) :
-		print(_chunks.world_to_chunk_key(mouse_pos))
-	
 	if !_chunks.is_chunk_loaded(mouse_pos) or mouse_pos.x < 0 or mouse_pos.y < 0: return false
 	
 	#match _curr_state:
@@ -100,7 +97,6 @@ func _forward_canvas_draw_over_viewport(viewport_control: Control) -> void:
 		EDITOR_STATE.terraform:
 			_terraform_draw(viewport_control)
 
-# TODO: problema com o scroll (zoom no editor e muda de tile ao msm tempo)
 func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
 	var scroll_up := false
 	var scroll_down := false

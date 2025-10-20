@@ -3,7 +3,9 @@ class_name chunk_mng
 extends Node2D
 
 const chunk_scene: Resource = preload("res://scenes/Chunk_tile.tscn")
+
 const folderPath: String = "res://chunks/"
+const terrain_type_folder: String = "res://terrain_types/"
 
 # Editor
 const emptyChunkPath: String = folderPath + "emptyChunk.dat"
@@ -21,7 +23,10 @@ var _last_center_chunk: Vector2i = Vector2i(-1, -1)
 var _curr_center_chunk: Vector2i
 
 var id_to_name: Dictionary[int, String]
-var tile_sprites: Array[Image]
+
+static var tile_sprites: Array[Image]
+static var tile_edge_colors: Array[Color]
+static var tile_durability: PackedByteArray
 
 #Debug only remove on release
 var should_mouse_break: bool = true
@@ -35,23 +40,32 @@ func _enter_tree() -> void:
 			load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
 	else:
 		Global.chunks = self
+	
+	_load_tile_resources()
 
 func late_ready() -> void:
 	if !Engine.is_editor_hint():
 		player = Global.player_node
-	tile_sprites = [
-		null,
-		Image.load_from_file("res://assets/sprites/terrain/dirt.png"), ##WILL NOT WORK ON SHIPPED GAME
-		Image.load_from_file("res://assets/sprites/terrain/stone.png"),
-		Image.load_from_file("res://assets/sprites/terrain/gold.png"),
-		Image.load_from_file("res://assets/sprites/terrain/clovium.png"),
-	]
 	emptyChunkTemplate = FileAccess.get_file_as_bytes(emptyChunkPath)
 	assert(len(emptyChunkTemplate) > 0)
 	for i: int in range(1, len(tile_sprites)):
 		assert(tile_sprites[i] != null)
 	var coords: Vector2i = Vector2i(0,0)
 	load_chunk(coords)
+
+func _load_tile_resources() -> void:
+	tile_sprites = [null]
+	tile_durability = [0]
+	tile_edge_colors = [Color.from_rgba8(0,0,0,0)]
+	
+	var tile_name: Array = chunk_tile.TILE_TYPE.keys()
+	for i: int in range(1, len(tile_name)):
+		var tile_data: terrain_type_base = load(terrain_type_folder + tile_name[i] + ".tres")
+		assert(tile_data)
+		tile_sprites.append(tile_data.sprite.get_image())
+		tile_edge_colors.append(tile_data.edge_color)
+		assert(tile_data.durability < 255)
+		tile_durability.append(tile_data.durability)
 
 func load_chunk(load_coords: Vector2i) -> void:
 	#print("loading " + str(load_coords))
