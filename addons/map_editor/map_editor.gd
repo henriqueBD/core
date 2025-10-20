@@ -7,6 +7,9 @@ const TARGET_SCENE_PATH: String = "Game"
 
 var _chunks: chunk_mng
 
+const DockScene = preload("res://addons/map_editor/material_dock.tscn")
+var _material_dock: Control = null
+
 const RELOAD_TIME_SEC: float = 0.25
 
 enum EDITOR_STATE {
@@ -38,6 +41,10 @@ func _disable_plugin() -> void:
 
 func _enter_tree():
 	Editor.break_radius = 20
+	_material_dock = DockScene.instantiate() 
+	add_control_to_dock(DOCK_SLOT_RIGHT_UL, _material_dock) 
+	_material_dock.material_selected.connect(_on_material_selected) 
+	print("Material dock added:", _material_dock)
 	var curr_scene := EditorInterface.get_edited_scene_root()
 	
 	if not curr_scene:
@@ -95,22 +102,33 @@ func _forward_canvas_draw_over_viewport(viewport_control: Control) -> void:
 
 # TODO: problema com o scroll (zoom no editor e muda de tile ao msm tempo)
 func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
-	var scroll_up: bool
-	var scroll_down: bool
-	var shift: bool
-	var click: bool
-	var leave: bool = false
+	var scroll_up := false
+	var scroll_down := false
+	var shift := false
+	var click := false
+	var leave := false
+
 	if event is InputEventMouseMotion:
-		update_overlays()
+		update_overlays() 
+
 	if event is InputEventMouseButton:
 		scroll_up = event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed
 		scroll_down = event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed
-		leave = (event.button_index == MOUSE_BUTTON_RIGHT and event.pressed or 
-				event.button_index == MOUSE_BUTTON_MIDDLE and event.pressed)
+		
+		leave = (event.button_index == MOUSE_BUTTON_RIGHT and event.pressed or
+				 event.button_index == MOUSE_BUTTON_MIDDLE and event.pressed)
+
 	click = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	shift = Input.is_key_pressed(KEY_SHIFT)
+
 	Editor.terraform(scroll_up, scroll_down, shift, click, mouse_pos, 20, _chunks)
-	return !leave
+	if scroll_up or scroll_down or click or (event is InputEventMouseMotion and click):
+		return true
+
+	if leave:
+		return false
+	
+	return false
 
 var brush_size_pixels: int = 20
 
@@ -138,7 +156,7 @@ func _on_scene_changed(scene_root: Node) -> void:
 		unload_stuff()
 		_check_if_should_update()
 		return
-	print("chenged scene")
+	print("changed scene")
 	if str(scene_root.name) != TARGET_SCENE_PATH:
 		print("Not same path")
 		unload_stuff()
@@ -157,6 +175,21 @@ func _check_if_should_update() -> void:
 	if _should_update and !before_update:
 		print("Updating now")
 
+func _on_material_selected(info) -> void:
+	if info == null:
+		Editor.curr_tile_index = 0 
+		print("Editor tile cleared (set to index 0)")
+		return
+
+	var tile_name: String = info.id
+
+	if tile_name in chunk_tile.TILE_TYPE:
+		var tile_index: int = chunk_tile.TILE_TYPE[tile_name]
+		Editor.curr_tile_index = tile_index
+		print("Editor tile set to: '%s' (index %d)" % [tile_name, tile_index])
+	else:
+		push_error("Selected material '%s' does not exist in chunk_tile.TILE_TYPE!" % tile_name)
+
 func unload_stuff() -> void:
 	if not _chunks: return
 	_chunks.unload_all_chunks()
@@ -167,3 +200,7 @@ func _clear() -> void:
 
 func _exit_tree():
 	unload_stuff()
+	if _material_dock:
+		remove_control_from_docks(_material_dock)
+		_material_dock.queue_free()
+		_material_dock = null
