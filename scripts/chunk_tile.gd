@@ -14,7 +14,7 @@ var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
 
 #const chunk_shader: Shader = preload("res://terrain_shader.gdshader")
 
-enum TILE_TYPE { AIR, DIRT, STONE, GOLD_PURE, CLOVIUM }
+enum TILE_TYPE { AIR, dirt, stone, gold, clovium }
 
 enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
 

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://c5cq8q7glhv1g"]
+
+[ext_resource type="Script" uid="uid://cispg8ph4x5cu" path="res://addons/map_editor/material_dock.gd" id="1_yrhop"]
+
+[node name="MaterialDock" type="VBoxContainer"]
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_yrhop")

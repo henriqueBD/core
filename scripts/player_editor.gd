@@ -173,43 +173,24 @@ func _terraform_game() -> void:
 
 static func terraform(scroll_up: bool, scroll_down: bool, shift: bool, 
 	mouse_hold: bool, cursor_pos: Vector2, b_radius: int = break_radius, chunk_m: chunk_mng = chunk) -> void:
-	if scroll_up:
-		if shift:
+	
+	if shift:
+		if scroll_up:
 			break_radius += 1
 			break_radius = min(255, break_radius)
 			print("Brush radius: " + str(break_radius))
-		else:
-			curr_tile_index += 1
-			if curr_tile_index == num_tiles:
-				curr_tile_index = 0
-			print("curr tile: " + chunk_tile.TILE_TYPE.keys()[curr_tile_index])
-	elif scroll_down:
-		if shift:
+		elif scroll_down:
 			break_radius -= 1
 			break_radius = max(1, break_radius)
 			print("Brush radius: " + str(break_radius))
-		else:
-			curr_tile_index -= 1
-			if curr_tile_index < 0:
-				curr_tile_index = num_tiles - 1
-			print("curr tile: " + chunk_tile.TILE_TYPE.keys()[curr_tile_index])
-	
-	for key: int in range(9):
-		if Input.is_key_pressed(hot_bar[key]):
-			if shift:
-				if tile_hot_bar[key] != curr_tile_index:
-					tile_hot_bar[key] = curr_tile_index
-					print(chunk_tile.TILE_TYPE.keys()[curr_tile_index] + " added to shortcut KEY" + str(key))
-			else:
-				if curr_tile_index != hot_bar[key]:
-					curr_tile_index = tile_hot_bar[key]
-					print("curr tile: " + chunk_tile.TILE_TYPE.keys()[curr_tile_index])
 	
 	if mouse_hold:
 		if curr_tile_index < 0 or curr_tile_index >= num_tiles:
 			print("Invalid tile index: " + str(curr_tile_index))
 			return
+		
 		var brush_size: Vector2 = Vector2(b_radius, b_radius)
+		
 		if Input.is_key_pressed(KEY_ALT):
 			chunk_m.change_tiles(Rect2(cursor_pos - brush_size / 2, brush_size), 0)
 		else:
@@ -240,3 +221,17 @@ func hash_string_to_int_sha256(input: String) -> int:
 		int_value = (int_value << 8) | hash_res[i]
 	
 	return int_value
+	
+	
+static func terraform_from_plugin(material_info: Dictionary, mouse_pos: Vector2, b_radius: int, chunk_m: chunk_mng) -> void:
+	if not material_info or not chunk_m:
+		return
+
+	var tile_to_paint: int = int(material_info.id)
+
+	var brush_size: Vector2 = Vector2(b_radius, b_radius)
+	
+	if Input.is_key_pressed(KEY_ALT):
+		chunk_m.change_tiles(Rect2(mouse_pos - brush_size / 2, brush_size), 0)
+	else:
+		chunk_m.change_tiles(Rect2(mouse_pos - brush_size / 2, brush_size), tile_to_paint)
