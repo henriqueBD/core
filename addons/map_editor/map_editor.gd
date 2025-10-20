@@ -29,8 +29,6 @@ var _should_update: bool = false
 var _same_scene: bool = true
 var _same_workplace: bool = true
 
-var _curr_draw
-
 func _enable_plugin() -> void:
 	# Add autoloads here.
 	pass
@@ -117,7 +115,7 @@ func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
 	click = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	shift = Input.is_key_pressed(KEY_SHIFT)
 
-	Editor.terraform(scroll_up, scroll_down, shift, click, mouse_pos, 20, _chunks)
+	Editor.terraform(scroll_up, scroll_down, shift, click, mouse_pos, _chunks)
 	if scroll_up or scroll_down or click or (event is InputEventMouseMotion and click):
 		return true
 
@@ -125,8 +123,6 @@ func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
 		return false
 	
 	return false
-
-var brush_size_pixels: int = 20
 
 func _terraform_draw(viewport_control: Control) -> void:
 	#viewport_control.draw_circle(viewport_control.get_local_mouse_position(), 64, Color.from_rgba8(255, 0, 255, 100))

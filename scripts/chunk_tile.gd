@@ -95,15 +95,18 @@ func _fix_borders_helper(coord_tmp: Vector2i) -> void:
 	assert(is_grid_pos_in_bounds(coord_tmp))
 	var target_type: TILE_TYPE = _get_tilev(coord_tmp)
 	if target_type == TILE_TYPE.AIR: return
-	if !_has_same_neighborsv(coord_tmp) and img.get_pixelv(coord_tmp) != chunk_mng.tile_edge_colors[target_type]:
-		_terrain_really_changed = true
-		img.set_pixelv(coord_tmp, chunk_mng.tile_edge_colors[target_type])
-	elif img.get_pixelv(coord_tmp) == chunk_mng.tile_edge_colors[target_type]:
-		_terrain_really_changed = true
-		img.set_pixelv(
-			coord_tmp, 
-			_tile_sprites[target_type].get_pixelv(Vector2i((coord_tmp)) % _tile_sprites[target_type].get_size())
-		)
+	
+	if _has_same_neighborsv(coord_tmp):
+		if img.get_pixelv(coord_tmp) == chunk_mng.tile_edge_colors[target_type]:
+			_terrain_really_changed = true
+			img.set_pixelv(
+				coord_tmp, 
+				_tile_sprites[target_type].get_pixelv(Vector2i(coord_tmp) % _tile_sprites[target_type].get_size())
+			)
+	else:
+		if img.get_pixelv(coord_tmp) != chunk_mng.tile_edge_colors[target_type]:
+			_terrain_really_changed = true
+			img.set_pixelv(coord_tmp, chunk_mng.tile_edge_colors[target_type])
 
 func _has_same_neighborsv(coord_check: Vector2i) -> bool:
 	return _has_same_neighbors(coord_check.x, coord_check.y)

@@ -59,21 +59,24 @@ func _load_tile_resources() -> void:
 	tile_edge_colors = [Color.from_rgba8(0,0,0,0)]
 	
 	var tile_name: Array = chunk_tile.TILE_TYPE.keys()
-	for i: int in range(1, len(tile_name)):
-		var tile_data: terrain_type_base = load(terrain_type_folder + tile_name[i] + ".tres")
+	for id: int in range(1, len(tile_name)):
+		var tile_data: terrain_type_base = load(terrain_type_folder + tile_name[id] + ".tres")
 		assert(tile_data)
 		tile_sprites.append(tile_data.sprite.get_image())
 		tile_edge_colors.append(tile_data.edge_color)
 		assert(tile_data.durability < 255)
 		tile_durability.append(tile_data.durability)
 
+#call fix_border if needed
 func load_chunk(load_coords: Vector2i) -> void:
 	#print("loading " + str(load_coords))
 	
 	var newChunk: chunk_tile = chunk_scene.instantiate()
 	var entities: obj_chunk = newChunk.initialize(load_coords, tile_sprites, chunksDict)
-	var coord_tmp: Vector2i = load_coords + Vector2i.UP
 	
+	newChunk.fix_borders()
+	
+	var coord_tmp: Vector2i = load_coords + Vector2i.UP
 	if chunksDict.has(coord_tmp): chunksDict[coord_tmp].fix_borders()
 	coord_tmp = load_coords + Vector2i.DOWN
 	if chunksDict.has(coord_tmp): chunksDict[coord_tmp].fix_borders()
@@ -81,7 +84,6 @@ func load_chunk(load_coords: Vector2i) -> void:
 	if chunksDict.has(coord_tmp): chunksDict[coord_tmp].fix_borders()
 	coord_tmp = load_coords + Vector2i.RIGHT
 	if chunksDict.has(coord_tmp): chunksDict[coord_tmp].fix_borders()
-	newChunk.fix_borders()
 	
 	add_child(newChunk)
 	chunksDict[load_coords] = newChunk
@@ -114,8 +116,8 @@ func is_chunk_loaded(world_point: Vector2) -> bool:
 
 func world_to_chunk_key(world_pos: Vector2) -> Vector2i:
 	return Vector2i(
-		int(world_pos.x / Global.CHUNK_SIDE), 
-		int(world_pos.y / Global.CHUNK_SIDE)
+		floori(world_pos.x / Global.CHUNK_SIDE), 
+		floori(world_pos.y / Global.CHUNK_SIDE)
 	)
 
 func world_to_chunk(world_pos: Vector2) -> chunk_tile:

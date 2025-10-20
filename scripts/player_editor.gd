@@ -1,8 +1,6 @@
 class_name Editor
 extends CanvasItem
 
-static var break_radius: int = 20
-
 @onready var parent: Node2D = self.get_parent()
 static var chunk: chunk_mng
 
@@ -28,6 +26,8 @@ static var curr_obj_instance: Node2D
 
 static var obj_name_list: Array[String]
 static var obj_name_hash: Array[int]
+
+static var break_radius: int = 20
 
 static var cursor_position: Vector2
 
@@ -172,7 +172,7 @@ func _terraform_game() -> void:
 	)
 
 static func terraform(scroll_up: bool, scroll_down: bool, shift: bool, 
-	mouse_hold: bool, cursor_pos: Vector2, b_radius: int = break_radius, chunk_m: chunk_mng = chunk) -> void:
+	mouse_hold: bool, cursor_pos: Vector2, chunk_m: chunk_mng = chunk) -> int:
 	
 	if shift:
 		if scroll_up:
@@ -187,14 +187,16 @@ static func terraform(scroll_up: bool, scroll_down: bool, shift: bool,
 	if mouse_hold:
 		if curr_tile_index < 0 or curr_tile_index >= num_tiles:
 			print("Invalid tile index: " + str(curr_tile_index))
-			return
+			return break_radius
 		
-		var brush_size: Vector2 = Vector2(b_radius, b_radius)
+		var brush_size: Vector2 = Vector2(break_radius, break_radius)
 		
 		if Input.is_key_pressed(KEY_ALT):
 			chunk_m.change_tiles(Rect2(cursor_pos - brush_size / 2, brush_size), 0)
 		else:
 			chunk_m.change_tiles(Rect2(cursor_pos - brush_size / 2, brush_size), curr_tile_index)
+	
+	return break_radius
 
 func terraform_render() -> void:
 	var icon_size: Vector2 = Vector2(break_radius, break_radius)
