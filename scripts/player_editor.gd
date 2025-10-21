@@ -14,7 +14,6 @@ enum EDITOR_STATE {
 
 static var curr_update: EDITOR_STATE = EDITOR_STATE.place_obj
 static var is_active: bool = false
-const objs_path: String = "res://entities/"
 
 const num_tiles: int = 5
 
@@ -40,22 +39,42 @@ func _ready() -> void:
 		return
 	F_U = load("res://entities/f_u.tscn").instantiate()
 	add_child(F_U)
-	var dir: DirAccess = DirAccess.open(objs_path)
+	
+	#var dir: DirAccess = DirAccess.open(Global.objs_path)
+	#dir.list_dir_begin()
+	#var file_name: String = dir.get_next()
+	#var id_to_name_tmp: Dictionary[int, String] = {}
+	#while file_name != "":
+		#if dir.current_is_dir():
+			#obj_name_list.append(file_name)
+			#var hash_id: int = hash_string_to_int_sha256(file_name)
+			#obj_name_hash.append(hash_id)
+			#id_to_name_tmp[hash_id] = file_name
+		#file_name = dir.get_next()
+	#dir.list_dir_end()
+	#print(obj_name_hash)
+	
+	populate_obj_arrays()
+	
+	chunk = Global.chunks
+	chunk.late_ready()
+
+static func populate_obj_arrays() -> void:
+	var dir: DirAccess = DirAccess.open(Global.objs_path)
 	dir.list_dir_begin()
 	var file_name: String = dir.get_next()
 	var id_to_name_tmp: Dictionary[int, String] = {}
 	while file_name != "":
 		if dir.current_is_dir():
 			obj_name_list.append(file_name)
-			var hash_id: int = hash_string_to_int_sha256(file_name)
+			#var hash_id: int = hash(file_name)
+			var hash_id: int = chunk_mng.hash_string(file_name)
 			obj_name_hash.append(hash_id)
 			id_to_name_tmp[hash_id] = file_name
 		file_name = dir.get_next()
 	dir.list_dir_end()
+	if chunk: chunk.id_to_name = id_to_name_tmp
 	print(obj_name_hash)
-	chunk = Global.chunks
-	chunk.id_to_name = id_to_name_tmp
-	chunk.late_ready()
 
 func activate() -> void:
 	curr_obj = load(get_obj_scene_path(get_curr_obj_name()))
@@ -138,7 +157,7 @@ func place_objects() -> void:
 		reload()
 
 func get_obj_scene_path(obj_name: String) -> String:
-	return objs_path + obj_name + "/" + obj_name + ".tscn"
+	return Global.objs_path + obj_name + "/" + obj_name + ".tscn"
 
 func get_curr_obj_name() -> String:
 	return obj_name_list[curr_obj_index]
@@ -209,20 +228,6 @@ func add_chunk() -> void:
 	if Input.is_action_just_pressed("place_object"):
 		var coords: Vector2i = chunk.world_to_chunk_key(cursor_position)
 		chunk.createEmptyChunk(coords)
-
-func hash_string_to_int_sha256(input: String) -> int:
-	var byte_data: PackedByteArray = input.to_utf8_buffer()
-	
-	var context: HashingContext = HashingContext.new()
-	context.start(HashingContext.HASH_SHA256)
-	context.update(byte_data)
-	var hash_res: PackedByteArray = context.finish()
-	
-	var int_value: int = 0
-	for i: int in range(8):
-		int_value = (int_value << 8) | hash_res[i]
-	
-	return int_value
 	
 	
 static func terraform_from_plugin(material_info: Dictionary, mouse_pos: Vector2, b_radius: int, chunk_m: chunk_mng) -> void:

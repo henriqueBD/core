@@ -73,41 +73,6 @@ func getBytes() -> PackedByteArray:
 		print("Failed to open file:", name)
 		return []
 
-func fix_borders() -> void:
-	const max_grid: int = Global.CHUNK_SIDE - 1
-	_terrain_really_changed = false
-	
-	_fix_borders_helper(Vector2i(0,0))
-	_fix_borders_helper(Vector2i(0,max_grid))
-	_fix_borders_helper(Vector2i(max_grid,0))
-	_fix_borders_helper(Vector2i(max_grid,max_grid))
-	for i: int in range(1, max_grid):
-		_fix_borders_helper(Vector2i(i,0))
-		_fix_borders_helper(Vector2i(i,max_grid))
-		_fix_borders_helper(Vector2i(0,i))
-		_fix_borders_helper(Vector2i(max_grid,i))
-	
-	if _terrain_really_changed:
-		tex.update(img)
-		changed_terrain = true
-
-func _fix_borders_helper(coord_tmp: Vector2i) -> void:
-	assert(is_grid_pos_in_bounds(coord_tmp))
-	var target_type: TILE_TYPE = _get_tilev(coord_tmp)
-	if target_type == TILE_TYPE.AIR: return
-	
-	if _has_same_neighborsv(coord_tmp):
-		if img.get_pixelv(coord_tmp) == chunk_mng.tile_edge_colors[target_type]:
-			_terrain_really_changed = true
-			img.set_pixelv(
-				coord_tmp, 
-				_tile_sprites[target_type].get_pixelv(Vector2i(coord_tmp) % _tile_sprites[target_type].get_size())
-			)
-	else:
-		if img.get_pixelv(coord_tmp) != chunk_mng.tile_edge_colors[target_type]:
-			_terrain_really_changed = true
-			img.set_pixelv(coord_tmp, chunk_mng.tile_edge_colors[target_type])
-
 func _has_same_neighborsv(coord_check: Vector2i) -> bool:
 	return _has_same_neighbors(coord_check.x, coord_check.y)
 
@@ -313,6 +278,41 @@ func eval_area(global_rect: Rect2, mining_force: int) -> Vector2:
 	return Vector2(
 		NAN if tiles_dir == Vector2.ZERO else tiles_dir.angle(), 
 		NAN if stronger_tiles_dir == Vector2.ZERO else stronger_tiles_dir.angle())
+
+func fix_borders() -> void:
+	const max_grid: int = Global.CHUNK_SIDE - 1
+	_terrain_really_changed = false
+	
+	_fix_borders_helper(Vector2i(0,0))
+	_fix_borders_helper(Vector2i(0,max_grid))
+	_fix_borders_helper(Vector2i(max_grid,0))
+	_fix_borders_helper(Vector2i(max_grid,max_grid))
+	for i: int in range(1, max_grid):
+		_fix_borders_helper(Vector2i(i,0))
+		_fix_borders_helper(Vector2i(i,max_grid))
+		_fix_borders_helper(Vector2i(0,i))
+		_fix_borders_helper(Vector2i(max_grid,i))
+	
+	if _terrain_really_changed:
+		tex.update(img)
+		changed_terrain = true
+
+func _fix_borders_helper(coord_tmp: Vector2i) -> void:
+	assert(is_grid_pos_in_bounds(coord_tmp))
+	var target_type: TILE_TYPE = _get_tilev(coord_tmp)
+	if target_type == TILE_TYPE.AIR: return
+	
+	if _has_same_neighborsv(coord_tmp):
+		if img.get_pixelv(coord_tmp) == chunk_mng.tile_edge_colors[target_type]:
+			_terrain_really_changed = true
+			img.set_pixelv(
+				coord_tmp, 
+				_tile_sprites[target_type].get_pixelv(Vector2i(coord_tmp) % _tile_sprites[target_type].get_size())
+			)
+	else:
+		if img.get_pixelv(coord_tmp) != chunk_mng.tile_edge_colors[target_type]:
+			_terrain_really_changed = true
+			img.set_pixelv(coord_tmp, chunk_mng.tile_edge_colors[target_type])
 
 #endregion
 

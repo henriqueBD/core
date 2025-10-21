@@ -22,11 +22,11 @@ var chunksBuffDict: Dictionary[Vector2i, bool]
 var _last_center_chunk: Vector2i = Vector2i(-1, -1)
 var _curr_center_chunk: Vector2i
 
-var id_to_name: Dictionary[int, String]
-
 static var tile_sprites: Array[Image]
 static var tile_edge_colors: Array[Color]
 static var tile_durability: PackedByteArray
+
+static var obj_id_to_name: Dictionary[int, String] = {}
 
 #Debug only remove on release
 var should_mouse_break: bool = true
@@ -41,6 +41,7 @@ func _enter_tree() -> void:
 	else:
 		Global.chunks = self
 	
+	_load_obj_list()
 	_load_tile_resources()
 
 func late_ready() -> void:
@@ -50,8 +51,11 @@ func late_ready() -> void:
 	assert(len(emptyChunkTemplate) > 0)
 	for i: int in range(1, len(tile_sprites)):
 		assert(tile_sprites[i] != null)
-	var coords: Vector2i = Vector2i(0,0)
-	load_chunk(coords)
+	
+	if obj_id_to_name.is_empty():
+		_load_obj_list()
+	
+	load_chunk(Vector2i(0,0))
 
 func _load_tile_resources() -> void:
 	tile_sprites = [null]
@@ -66,6 +70,28 @@ func _load_tile_resources() -> void:
 		tile_edge_colors.append(tile_data.edge_color)
 		assert(tile_data.durability < 255)
 		tile_durability.append(tile_data.durability)
+
+func _load_obj_list() -> void:
+	var dir: DirAccess = DirAccess.open(Global.objs_path)
+	dir.list_dir_begin()
+	var file_name: String = dir.get_next()
+	var d: Dictionary[int, String] = {}
+	obj_id_to_name = d
+	while file_name != "":
+		if dir.current_is_dir():
+			var hash_id: int = hash_string(file_name)
+			obj_id_to_name[hash_id] = file_name
+		file_name = dir.get_next()
+	dir.list_dir_end()
+	print(obj_id_to_name)
+	pass
+
+static func hash_string(input: String) -> int:
+	var hash_var: int = 5381
+	for c: String in input:
+		var code: int = c.unicode_at(0)
+		hash_var = ((hash_var << 5) + hash_var) + code
+	return hash_var & 0x7FFFFFFF
 
 #call fix_border if needed
 func load_chunk(load_coords: Vector2i) -> void:
@@ -270,8 +296,8 @@ func add_object_chunk(global_pos: Vector2, obj: Node2D, obj_id: int) -> void:
 
 func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 	for i: int in range(len(objs.id)):
-		var obj_name: String = id_to_name[objs.id[i]]
-		var path: String = "res://entities/" + obj_name + "/" + obj_name + ".tscn"
+		var obj_name: String = obj_id_to_name[objs.id[i]]
+		var path: String = "res://entities/%s/%s.tscn" % [obj_name, obj_name]
 		var tmp: PackedScene = load(path)
 		var obj: Area2D = tmp.instantiate()
 		obj.global_position = objs.pos[i]

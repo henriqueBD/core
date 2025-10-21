@@ -15,7 +15,6 @@ const RELOAD_TIME_SEC: float = 0.25
 enum EDITOR_STATE {
 	unreachable,
 	place_obj,
-	delete_obj,
 	terraform,
 	add_chunk,
 }
@@ -28,6 +27,9 @@ var _chunk_scene: PackedScene
 var _should_update: bool = false
 var _same_scene: bool = true
 var _same_workplace: bool = true
+
+var _curr_obj_index: int
+var _curr_obj_preview: Texture2D
 
 func _enable_plugin() -> void:
 	# Add autoloads here.
@@ -65,6 +67,9 @@ func _enter_tree():
 func _process(delta: float) -> void:
 	_timer += delta
 	
+	if Input.is_key_label_pressed(KEY_1):
+		_change_state(EDITOR_STATE.place_obj)
+	
 	if !_should_update or _timer < RELOAD_TIME_SEC or not _chunks: return
 	
 	_timer = 0.0
@@ -76,17 +81,25 @@ func _handles(object: Object) -> bool:
 	var mng: chunk_mng = object as chunk_mng
 	return mng != null
 
+func _change_state(new_state: EDITOR_STATE) -> void:
+	match new_state:
+		EDITOR_STATE.place_obj:
+			_place_obj_enter()
+	
+	_curr_state = new_state
+
 func _forward_canvas_gui_input(event: InputEvent) -> bool:
 	var mouse_pos: Vector2 = EditorInterface.get_editor_viewport_2d().get_mouse_position()
 	
 	if !_chunks.is_chunk_loaded(mouse_pos) or mouse_pos.x < 0 or mouse_pos.y < 0: return false
 	
-	#match _curr_state:
-		#EDITOR_STATE.terraform:
-			#return _terraform(event, mouse_pos)
-		#null:
-			#_curr_state = EDITOR_STATE.terraform
-	return _terraform(event, mouse_pos)
+	match _curr_state:
+		EDITOR_STATE.terraform:
+			return _terraform(event, mouse_pos)
+		null:
+			_curr_state = EDITOR_STATE.terraform
+			return _terraform(event, mouse_pos)
+	#return _terraform(event, mouse_pos)
 	
 	return false
 
@@ -94,6 +107,8 @@ func _forward_canvas_draw_over_viewport(viewport_control: Control) -> void:
 	match _curr_state:
 		EDITOR_STATE.terraform:
 			_terraform_draw(viewport_control)
+
+#region state update
 
 func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
 	var scroll_up := false
@@ -124,9 +139,37 @@ func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
 	
 	return false
 
+func _place_obj_enter() -> void:
+	var img_tmp: Image = Image.new()
+	var path := Global.objs_path + Editor.obj_name_list[_curr_obj_index] + "_preview.png"
+	var error := img_tmp.load(path)
+	if error != OK:
+		push_error("Failed to load image at path: %s" % path)
+		return
+	_curr_obj_preview = ImageTexture.create_from_image(img_tmp)
+
+func _place_obj(event: InputEvent, mouse_pos: Vector2) -> bool:
+	var leave: bool = false
+	
+	if event is InputEventMouseButton:
+		leave = (event.button_index == MOUSE_BUTTON_RIGHT and event.pressed or
+				 event.button_index == MOUSE_BUTTON_MIDDLE and event.pressed)
+	
+	return leave
+
+#endregion
+
+#region state draw
+
 func _terraform_draw(viewport_control: Control) -> void:
 	#viewport_control.draw_circle(viewport_control.get_local_mouse_position(), 64, Color.from_rgba8(255, 0, 255, 100))
 	pass
+
+func _place_obj_draw(viewport_control: Control) -> void:
+	if _curr_obj_preview:
+		viewport_control.draw_texture(_curr_obj_preview, viewport_control.get_local_mouse_position())
+
+#endregion
 
 func _on_work_place_changed(screen_name: String) -> void:
 	if screen_name != "2D": 
