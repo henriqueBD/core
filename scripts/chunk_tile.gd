@@ -426,9 +426,6 @@ func remove_swap(arr: Array, index: int) -> void:
 		arr[index] = arr[last_index]
 	arr.pop_back()
 
-func _save_entities() -> void:
-	if len(entities.id) > 0:
-		ResourceSaver.save(entities, "res://entities_map/" + str(coords.x) + "-" + str(coords.y) + ".res")
 
 func unload() -> void:
 	if changed_entities:
@@ -437,6 +434,10 @@ func unload() -> void:
 	if changed_terrain:
 		print("Saving chunk terrain: " + str(coords))
 		_save_terrain()
+
+func _save_entities() -> void:
+	if len(entities.id) > 0:
+		ResourceSaver.save(entities, "res://entities_map/" + str(coords.x) + "-" + str(coords.y) + ".res")
 
 func _save_terrain() -> void:
 	var target_path: String = chunk_mng.get_chunk_path(coords)
@@ -490,7 +491,8 @@ func compress_chunk() -> PackedByteArray:
 	return buf.slice(0, buf_i)
 
 func add_sprite(sprite: Sprite2D) -> void:
-	self.add_child(sprite)
-	sprite.owner = self
+	if sprite:
+		self.add_child(sprite)
+		sprite.owner = self
 
 #endregion

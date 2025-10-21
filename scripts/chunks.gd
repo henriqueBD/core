@@ -338,6 +338,28 @@ func createEmptyChunk(new_chunk_pos: Vector2i) -> void:
 	add_child(newChunk)
 	chunksDict[new_chunk_pos] = newChunk
 
+func add_object_viewport(world_pos: Vector2, obj_id: int) -> void:
+	var key_to_add: Vector2i = world_to_chunk_key(world_pos)
+	if !chunksDict.has(key_to_add):
+		print("Invalid chunk to add object")
+		return
+	var chunk_to_add: chunk_tile = chunksDict[key_to_add]
+	chunk_to_add.entities.id.append(obj_id)
+	chunk_to_add.entities.pos.append(world_pos)
+	chunk_to_add.changed_entities = true
+	var img_tmp: Image = Image.new()
+	var obj_name: String = obj_id_to_name[obj_id]
+	var path: String = Global.objs_path + obj_name + "/" + obj_name + "_preview.png"
+	var error: Error = img_tmp.load(path)
+	if error != OK:
+		push_error("Failed to load image at path: %s" % path)
+		return
+	var obj_sprite: Sprite2D = Sprite2D.new()
+	obj_sprite.texture = ImageTexture.create_from_image(img_tmp)
+	obj_sprite.global_position = world_pos
+	if obj_sprite:
+		chunk_to_add.add_sprite(obj_sprite)
+
 #endregion
 
 func _exit_tree() -> void:

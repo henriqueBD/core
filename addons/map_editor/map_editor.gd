@@ -28,10 +28,17 @@ var _should_update: bool = false
 var _same_scene: bool = true
 var _same_workplace: bool = true
 
-var _curr_obj_index: int
-var _curr_obj_preview: Texture2D
+# -============================(v)================================- #
+## Utilize o dict chunk_mng.obj_id_to_name[id: int] para (id -> nome)
+## Utilize chunk_mng.hash_string(nome: String) para (nome -> id)
+## _obj_names e _obj_ids devem ser acessados apenas pelo _curr_obj_index
+# -============================(^)================================- #
 
+var _curr_obj_index: int
 var _obj_names: Array[String]
+var _obj_ids: Array[int]
+var _curr_obj_preview: Texture2D
+var _obj_id_to_index: Dictionary[int, int]
 
 func _enable_plugin() -> void:
 	# Add autoloads here.
@@ -62,9 +69,7 @@ func _enter_tree():
 				_chunks.late_ready()
 				_should_update = true
 	
-	if chunk_mng.obj_id_to_name.is_empty():
-		printerr("Could not get objs list")
-	else: 
+	if !chunk_mng.obj_id_to_name.is_empty():
 		_load_obj_list()
 	
 	self.main_screen_changed.connect(_on_work_place_changed)
@@ -74,10 +79,11 @@ func _enter_tree():
 func _process(delta: float) -> void:
 	_timer += delta
 	
+	##TODO: Reimplementar o jeito de mudar de estado
 	if Input.is_key_label_pressed(KEY_1):
-		_change_state(EDITOR_STATE.place_obj)
-	elif Input.is_key_label_pressed(KEY_2):
 		_change_state(EDITOR_STATE.terraform)
+	elif Input.is_key_label_pressed(KEY_2):
+		_change_state(EDITOR_STATE.place_obj)
 	elif Input.is_key_label_pressed(KEY_0):
 		_change_state(EDITOR_STATE.unreachable)
 	
@@ -146,22 +152,42 @@ func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
 	return false
 
 func _place_obj_enter() -> void:
+	_change_selected_obj(_obj_names[clamp(_curr_obj_index, 0, len(_obj_names)-1)])
+	#var img_tmp: Image = Image.new()
+	#var obj_name := _obj_names[_curr_obj_index]
+	#var path := Global.objs_path + obj_name + "/" + obj_name + "_preview.png"
+	#var error := img_tmp.load(path)
+	#if error != OK:
+		#push_error("Failed to load image at path: %s" % path)
+		#return
+	#_curr_obj_preview = ImageTexture.create_from_image(img_tmp)
+
+func _place_obj(event: InputEvent, mouse_pos: Vector2) -> bool:
+	var leave: bool = false
+	
+	if event is InputEventKey:
+		if event.keycode == KEY_P and event.pressed:
+			_curr_obj_index = (_curr_obj_index + 1) % len(_obj_names)
+			_change_selected_obj(_obj_names[_curr_obj_index])
+	
+	if event is InputEventMouseButton:
+		leave = event.button_index == MOUSE_BUTTON_RIGHT and event.pressed
+		
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			_chunks.add_object_viewport(floor(mouse_pos), _obj_ids[_curr_obj_index])
+	
+	return !leave
+
+## Importante
+func _change_selected_obj(obj_name: String) -> void:
 	var img_tmp: Image = Image.new()
-	var obj_name := _obj_names[_curr_obj_index]
 	var path := Global.objs_path + obj_name + "/" + obj_name + "_preview.png"
 	var error := img_tmp.load(path)
 	if error != OK:
 		push_error("Failed to load image at path: %s" % path)
 		return
 	_curr_obj_preview = ImageTexture.create_from_image(img_tmp)
-
-func _place_obj(event: InputEvent, mouse_pos: Vector2) -> bool:
-	var leave: bool = false
-	
-	if event is InputEventMouseButton:
-		leave = event.button_index == MOUSE_BUTTON_RIGHT and event.pressed
-	
-	return !leave
+	_curr_obj_index = _obj_id_to_index[chunk_mng.hash_string(obj_name)]
 
 #endregion
 
@@ -255,8 +281,11 @@ func _load_obj_list() -> void:
 	if chunk_mng.obj_id_to_name.is_empty():
 		printerr("obj list is empty")
 		return
-	for key: int in chunk_mng.obj_id_to_name.keys():
-		_obj_names.append(chunk_mng.obj_id_to_name[key])
+	_obj_id_to_index = {}
+	_obj_ids = chunk_mng.obj_id_to_name.keys()
+	for i: int in range(len(_obj_ids)):
+		_obj_names.append(chunk_mng.obj_id_to_name[_obj_ids[i]])
+		_obj_id_to_index[_obj_ids[i]] = i
 
 func unload_stuff() -> void:
 	if not _chunks: return
