@@ -64,9 +64,8 @@ func _enter_tree():
 	
 	if chunk_mng.obj_id_to_name.is_empty():
 		printerr("Could not get objs list")
-	else:
-		for key: int in chunk_mng.obj_id_to_name.keys():
-			_obj_names.append(chunk_mng.obj_id_to_name[key])
+	else: 
+		_load_obj_list()
 	
 	self.main_screen_changed.connect(_on_work_place_changed)
 	self.scene_changed.connect(_on_scene_changed)
@@ -182,12 +181,12 @@ func _terraform_draw(viewport_control: Control) -> void:
 	rect_draw.position -= rect_draw.size / 2
 	viewport_control.draw_rect(rect_draw, Color.from_rgba8(255, 0, 255, 100))
 
+# Improvements: change the filtering to remove blurring, snap the position to pixels
 func _place_obj_draw(viewport_control: Control) -> void:
 	var zoom: float = _get_editor_zoom_ammount()
 	if _curr_obj_preview:
 		var texture_size: Vector2 = _curr_obj_preview.get_size() * zoom
-		var mouse_pos: Vector2 = viewport_control.get_local_mouse_position()
-		var draw_pos: Vector2 = mouse_pos - texture_size * 0.5
+		var draw_pos: Vector2 = viewport_control.get_local_mouse_position() - texture_size * 0.5
 		var rect := Rect2(draw_pos, texture_size)
 		viewport_control.draw_texture_rect(_curr_obj_preview, rect, false)
 
@@ -206,6 +205,7 @@ func _on_work_place_changed(screen_name: String) -> void:
 			var curr_scene := EditorInterface.get_edited_scene_root()
 			_chunks = curr_scene.get_node_or_null("Chunk")
 			_chunks.late_ready()
+			_load_obj_list()
 	
 	_check_if_should_update()
 
@@ -227,6 +227,7 @@ func _on_scene_changed(scene_root: Node) -> void:
 			var curr_scene := EditorInterface.get_edited_scene_root()
 			_chunks = curr_scene.get_node_or_null("Chunk")
 			_chunks.late_ready()
+			_load_obj_list()
 	_check_if_should_update()
 
 func _check_if_should_update() -> void:
@@ -249,6 +250,13 @@ func _on_material_selected(info) -> void:
 		print("Editor tile set to: '%s' (index %d)" % [tile_name, tile_index])
 	else:
 		push_error("Selected material '%s' does not exist in chunk_tile.TILE_TYPE!" % tile_name)
+
+func _load_obj_list() -> void:
+	if chunk_mng.obj_id_to_name.is_empty():
+		printerr("obj list is empty")
+		return
+	for key: int in chunk_mng.obj_id_to_name.keys():
+		_obj_names.append(chunk_mng.obj_id_to_name[key])
 
 func unload_stuff() -> void:
 	if not _chunks: return

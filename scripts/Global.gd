@@ -1,3 +1,4 @@
+class_name Globals
 extends Node
 
 const objs_path: String = "res://entities/"

@@ -34,6 +34,7 @@ var should_mouse_break: bool = true
 var editor_stuff_active: bool = false
 
 func _enter_tree() -> void:
+	assert(self.global_position == Vector2.ZERO, "Chunks position must be at (0, 0)")
 	if Engine.is_editor_hint():
 		if editor_stuff_active:
 			late_ready()
@@ -93,7 +94,6 @@ static func hash_string(input: String) -> int:
 		hash_var = ((hash_var << 5) + hash_var) + code
 	return hash_var & 0x7FFFFFFF
 
-#call fix_border if needed
 func load_chunk(load_coords: Vector2i) -> void:
 	#print("loading " + str(load_coords))
 	
@@ -116,7 +116,21 @@ func load_chunk(load_coords: Vector2i) -> void:
 	newChunk.owner = self
 	
 	if entities == null: return
-	add_objects(newChunk, entities)
+	
+	if Engine.is_editor_hint():
+		for i: int in range(len(entities.id)):
+			var img_tmp: Image = Image.new()
+			var obj_name: String = obj_id_to_name[entities.id[i]]
+			var path: String = "%s%s/%s_preview.png" % [Global.objs_path, obj_name, obj_name]
+			if img_tmp.load(path) != OK:
+				push_error("Failed to load image at path: %s" % path)
+				continue
+			var to_add: Sprite2D = Sprite2D.new()
+			to_add.texture = ImageTexture.create_from_image(img_tmp)
+			to_add.global_position = entities.pos[i]
+			newChunk.add_sprite(to_add)
+	else:
+		add_objects(newChunk, entities)
 
 func unload_chunk(unloadCoords: Vector2i) -> void:
 	if !chunksDict.has(unloadCoords): return
@@ -140,7 +154,7 @@ func is_chunk_in_bounds(check: Vector2i) -> bool:
 func is_chunk_loaded(world_point: Vector2) -> bool:
 	return chunksDict.has(world_to_chunk_key(world_point))
 
-func world_to_chunk_key(world_pos: Vector2) -> Vector2i:
+static func world_to_chunk_key(world_pos: Vector2) -> Vector2i:
 	return Vector2i(
 		floori(world_pos.x / Global.CHUNK_SIDE), 
 		floori(world_pos.y / Global.CHUNK_SIDE)

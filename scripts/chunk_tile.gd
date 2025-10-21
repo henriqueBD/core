@@ -169,8 +169,9 @@ func _get_tilev(xy: Vector2i) -> TILE_TYPE:
 func _get_tile_safe(x: int, y: int) -> TILE_TYPE:
 	if x < 0 or x >= Global.CHUNK_SIDE or y < 0 or y >= Global.CHUNK_SIDE:
 		var global_coords: Vector2i = to_global(Vector2(x, y))
-		var key: Vector2i = Vector2i(global_coords.x / Global.CHUNK_SIDE , global_coords.y / Global.CHUNK_SIDE)
-		if !_chunks_loaded.has(key): return 0
+		#var key: Vector2i = Vector2i(global_coords.x / Global.CHUNK_SIDE , global_coords.y / Global.CHUNK_SIDE)
+		var key: Vector2i = chunk_mng.world_to_chunk_key(global_coords)
+		if !_chunks_loaded.has(key): return TILE_TYPE.AIR
 		var chunk_search: chunk_tile = _chunks_loaded[key]
 		return chunk_search._get_tilev(chunk_search.world_to_grid(global_coords))
 	else: return _get_tile(x, y)
@@ -487,5 +488,9 @@ func compress_chunk() -> PackedByteArray:
 		i = j
 	
 	return buf.slice(0, buf_i)
+
+func add_sprite(sprite: Sprite2D) -> void:
+	self.add_child(sprite)
+	sprite.owner = self
 
 #endregion
