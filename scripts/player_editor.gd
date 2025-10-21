@@ -40,20 +40,6 @@ func _ready() -> void:
 	F_U = load("res://entities/f_u.tscn").instantiate()
 	add_child(F_U)
 	
-	#var dir: DirAccess = DirAccess.open(Global.objs_path)
-	#dir.list_dir_begin()
-	#var file_name: String = dir.get_next()
-	#var id_to_name_tmp: Dictionary[int, String] = {}
-	#while file_name != "":
-		#if dir.current_is_dir():
-			#obj_name_list.append(file_name)
-			#var hash_id: int = hash_string_to_int_sha256(file_name)
-			#obj_name_hash.append(hash_id)
-			#id_to_name_tmp[hash_id] = file_name
-		#file_name = dir.get_next()
-	#dir.list_dir_end()
-	#print(obj_name_hash)
-	
 	populate_obj_arrays()
 	
 	chunk = Global.chunks
