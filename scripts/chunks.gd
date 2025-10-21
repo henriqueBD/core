@@ -112,8 +112,8 @@ func load_chunk(load_coords: Vector2i) -> void:
 	if chunksDict.has(coord_tmp): chunksDict[coord_tmp].fix_borders()
 	
 	add_child(newChunk)
-	chunksDict[load_coords] = newChunk
 	newChunk.owner = self
+	chunksDict[load_coords] = newChunk
 	
 	if entities == null: return
 	
@@ -173,26 +173,22 @@ func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
 # Returns the global Y coord if there is collision, else returns -INF
 func raycast_down_world(world_pos: Vector2, dist: int) -> float:
 	var chunk_point: chunk_tile = world_to_chunk(world_pos)
-	return chunk_point.rayCastDown(
-		world_pos, dist, world_to_chunk(Vector2(world_pos.x, world_pos.y + 1)))
+	return chunk_point.rayCastDown(world_pos, dist)
 
 # Returns the global Y coord if there is collision, else returns -INF
 func raycast_up_world(world_pos: Vector2, dist: int) -> float:
 	var chunk_point: chunk_tile = world_to_chunk(world_pos)
-	return chunk_point.rayCastUp(
-		world_pos, dist, world_to_chunk(Vector2(world_pos.x, world_pos.y - 1)))
+	return chunk_point.rayCastUp(world_pos, dist)
 
 # Returns the global X coord if there is collision, else returns -INF
 func raycast_left_world(world_pos: Vector2, dist: int) -> float:
 	var chunk_point: chunk_tile = world_to_chunk(world_pos)
-	return chunk_point.rayCastLeft(
-		world_pos, dist, world_to_chunk(Vector2(world_pos.x - 1, world_pos.y)))
+	return chunk_point.rayCastLeft(world_pos, dist)
 
 # Returns the global X coord if there is collision, else returns -INF
 func raycast_right_world(world_pos: Vector2, dist: int) -> float:
 	var chunk_point: chunk_tile = world_to_chunk(world_pos)
-	return chunk_point.rayCastRight(
-		world_pos, dist, world_to_chunk(Vector2(world_pos.x + 1, world_pos.y)))
+	return chunk_point.rayCastRight(world_pos, dist)
 
 func raycast_general_world(world_pos_start: Vector2, world_pos_end: Vector2) -> float:
 	var chunk_point: chunk_tile = world_to_chunk(world_pos_start)
@@ -339,14 +335,18 @@ func createEmptyChunk(new_chunk_pos: Vector2i) -> void:
 	chunksDict[new_chunk_pos] = newChunk
 
 func add_object_viewport(world_pos: Vector2, obj_id: int) -> void:
+	if !Engine.is_editor_hint(): return
+	
 	var key_to_add: Vector2i = world_to_chunk_key(world_pos)
 	if !chunksDict.has(key_to_add):
 		print("Invalid chunk to add object")
 		return
+	
 	var chunk_to_add: chunk_tile = chunksDict[key_to_add]
 	chunk_to_add.entities.id.append(obj_id)
 	chunk_to_add.entities.pos.append(world_pos)
 	chunk_to_add.changed_entities = true
+	
 	var img_tmp: Image = Image.new()
 	var obj_name: String = obj_id_to_name[obj_id]
 	var path: String = Global.objs_path + obj_name + "/" + obj_name + "_preview.png"

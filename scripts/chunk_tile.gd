@@ -57,7 +57,8 @@ func initialize(c: Vector2i, sprite_array: Array[Image], dict_chunks: Dictionary
 	entities = obj_chunk.new()
 	var path: String = "res://entities_map/" + str(coords.x) + "-" + str(coords.y) + ".res"
 	if FileAccess.file_exists(path):
-		return ResourceLoader.load(path)
+		entities = ResourceLoader.load(path)
+		return entities
 	else:
 		return null
 
@@ -322,7 +323,7 @@ func _fix_borders_helper(coord_tmp: Vector2i) -> void:
 const ignoreTile: TILE_TYPE = TILE_TYPE.AIR
 const no_collision: float = -INF
 	
-func rayCastDown(world_pos: Vector2, dist: int , down_chunk_tiles: chunk_tile) -> float:
+func rayCastDown(world_pos: Vector2, dist: int) -> float:
 	var grid_pos: Vector2i = world_to_grid(world_pos)
 	var x_check: int = grid_pos.x
 	for y: int in range(floori(grid_pos.y), floori(grid_pos.y) + dist + 1):
@@ -330,7 +331,7 @@ func rayCastDown(world_pos: Vector2, dist: int , down_chunk_tiles: chunk_tile) -
 			return grid_to_world(Vector2i(x_check, y), TILE_POS.TOP).y
 	return no_collision
 
-func rayCastUp(world_pos: Vector2, dist: int, up_chunk_tiles: chunk_tile) -> float:
+func rayCastUp(world_pos: Vector2, dist: int) -> float:
 	var grid_pos: Vector2i = world_to_grid(world_pos)
 	var x_check: int = grid_pos.x
 	for y: int in range(floori(grid_pos.y), floori(grid_pos.y) - dist - 1, -1):
@@ -338,7 +339,7 @@ func rayCastUp(world_pos: Vector2, dist: int, up_chunk_tiles: chunk_tile) -> flo
 			return grid_to_world(Vector2i(x_check, y), TILE_POS.BOTTOM).y
 	return no_collision
 
-func rayCastLeft(world_pos: Vector2, dist: int, left_chunk_tiles: chunk_tile) -> float:
+func rayCastLeft(world_pos: Vector2, dist: int) -> float:
 	var grid_pos: Vector2i = world_to_grid(world_pos)
 	var y_check: int = grid_pos.y
 	for x: int in range(grid_pos.x, grid_pos.x - dist, -1):
@@ -346,7 +347,7 @@ func rayCastLeft(world_pos: Vector2, dist: int, left_chunk_tiles: chunk_tile) ->
 			return grid_to_world(Vector2(x, y_check), TILE_POS.RIGHT).x
 	return no_collision
 
-func rayCastRight(world_pos: Vector2, dist: int, right_chunk_tiles: chunk_tile) -> float:
+func rayCastRight(world_pos: Vector2, dist: int) -> float:
 	var grid_pos: Vector2i = world_to_grid(world_pos)
 	var y_check: int = grid_pos.y
 	for x: int in range(grid_pos.x, grid_pos.x + dist):
