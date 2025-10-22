@@ -3,9 +3,13 @@ extends VBoxContainer
 
 signal material_selected(info)
 
+
 const TERRAIN_PATH := "res://assets/sprites/terrain"
+
 var tile_size: int = 64
 var padding: int = 6
+
+var _grid: GridContainer
 
 func _ready() -> void:
 	# === Title ===
@@ -21,13 +25,13 @@ func _ready() -> void:
 	scroll.custom_minimum_size = Vector2(180, 220)
 	add_child(scroll)
 
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.name = "grid"
-	scroll.add_child(grid)
+	_grid = GridContainer.new()
+	_grid.columns = 2
+	_grid.name = "grid"
+	scroll.add_child(_grid)
 
 	# === Load terrain textures ===
-	_load_terrain_textures(grid)
+	_load_terrain_textures(_grid)
 
 	# === Bottom bar ===
 	var bottom := HBoxContainer.new()
@@ -46,6 +50,8 @@ func _ready() -> void:
 	clear_btn.text = "Clear"
 	clear_btn.pressed.connect(_on_clear_pressed)
 	bottom.add_child(clear_btn)
+
+	connect("resized", _on_size_changed)
 
 
 # -------------------------------------------------------------------
@@ -99,3 +105,15 @@ func _on_clear_pressed() -> void:
 func _update_selected_label(info) -> void:
 	var lbl: Label = get_node("bottom/sel_label")
 	lbl.text = "Selected: %s" % info.id if info else "Selected: —"
+
+func _on_size_changed() -> void:
+	if _grid.get_child_count() == 0: return
+	
+	var button := _grid.get_child(0) as TextureButton
+	if !button: return
+	
+	var button_size: float = button.size.x
+	var new_colums: int = max(size.x / button_size, 1)
+	
+	if _grid.columns != new_colums:
+		_grid.columns = new_colums

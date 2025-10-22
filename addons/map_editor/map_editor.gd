@@ -40,14 +40,6 @@ var _obj_ids: Array[int]
 var _curr_obj_preview: Texture2D
 var _obj_id_to_index: Dictionary[int, int]
 
-func _enable_plugin() -> void:
-	# Add autoloads here.
-	pass
-
-func _disable_plugin() -> void:
-	# Remove autoloads here.
-	pass
-
 func _enter_tree():
 	Editor.break_radius = 20
 	_material_dock = DockScene.instantiate() 
@@ -62,6 +54,7 @@ func _enter_tree():
 		if curr_scene.name != TARGET_SCENE_PATH:
 			print("Fail 2")
 		else:
+			#_try_connect_signal()
 			_chunks = curr_scene.get_node_or_null("Chunk")
 			if not _chunks:
 				print("failed to get chunk_mng")
@@ -248,6 +241,7 @@ func _on_scene_changed(scene_root: Node) -> void:
 		unload_stuff()
 		_same_scene = false
 	else:
+		#_try_connect_signal()
 		_same_scene = true
 		if not _chunks and _same_workplace:
 			var curr_scene := EditorInterface.get_edited_scene_root()
