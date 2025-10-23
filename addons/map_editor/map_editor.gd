@@ -75,8 +75,8 @@ func _process(delta: float) -> void:
 	##TODO: Reimplementar o jeito de mudar de estado
 	if Input.is_key_label_pressed(KEY_1):
 		_change_state(EDITOR_STATE.terraform)
-	elif Input.is_key_label_pressed(KEY_2):
-		_change_state(EDITOR_STATE.place_obj)
+	#elif Input.is_key_label_pressed(KEY_2):
+		#_change_state(EDITOR_STATE.place_obj)
 	elif Input.is_key_label_pressed(KEY_0):
 		_change_state(EDITOR_STATE.unreachable)
 	
@@ -255,6 +255,7 @@ func _check_if_should_update() -> void:
 	_should_update = _same_scene and _same_workplace
 	if _should_update and !before_update:
 		print("Updating now")
+	self.set_process(_should_update)
 
 func _on_material_selected(info) -> void:
 	if info == null:

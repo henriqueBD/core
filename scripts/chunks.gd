@@ -39,6 +39,10 @@ func _enter_tree() -> void:
 		if editor_stuff_active:
 			late_ready()
 			load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
+		var parent: Node = self.get_parent()
+		if parent:
+			var script: Script = load("res://scripts/objects_signal.gd")
+			if script: parent.set_script(script)
 	else:
 		Global.chunks = self
 	

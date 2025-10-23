@@ -19,6 +19,7 @@ enum TILE_TYPE { AIR, dirt, stone, gold, clovium }
 enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
 
 func initialize(c: Vector2i, sprite_array: Array[Image], dict_chunks: Dictionary[Vector2i, chunk_tile], data_empty: PackedByteArray = []) -> obj_chunk:
+	self.set_process(false)
 	_chunks_loaded = dict_chunks
 	_tile_sprites = sprite_array
 	coords = c

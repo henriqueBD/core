@@ -1,10 +1,12 @@
-[gd_scene load_steps=4 format=3 uid="uid://p22pqxsrvqus"]
+[gd_scene load_steps=5 format=3 uid="uid://p22pqxsrvqus"]
 
+[ext_resource type="Script" uid="uid://b3bg4gilb8xkb" path="res://scripts/objects_signal.gd" id="1_lbhrr"]
 [ext_resource type="Script" uid="uid://cqnx0060bfqfg" path="res://scripts/camera_follow.gd" id="1_lnu2h"]
 [ext_resource type="PackedScene" uid="uid://c53auncdmtksg" path="res://scenes/chunk.tscn" id="2_yqjtg"]
 [ext_resource type="PackedScene" uid="uid://bpytpor8ff704" path="res://scenes/player.tscn" id="3_lnu2h"]
 
 [node name="Game" type="Node2D"]
+script = ExtResource("1_lbhrr")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(24, 22)
