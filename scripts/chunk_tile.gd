@@ -497,4 +497,13 @@ func add_sprite(sprite: Sprite2D) -> void:
 		self.add_child(sprite)
 		sprite.owner = self
 
+func add_entity_backend(id: int, pos: Vector2) -> void:
+	entities.id.append(id)
+	entities.pos.append(pos)
+	changed_entities = true
+
+func clear_entity_backend() -> void:
+	entities.id = []
+	entities.pos = []
+
 #endregion

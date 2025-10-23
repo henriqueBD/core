@@ -122,17 +122,21 @@ func load_chunk(load_coords: Vector2i) -> void:
 	if entities == null: return
 	
 	if Engine.is_editor_hint():
+		
+		var main_node: Node = self.get_parent()
+		if !main_node: return
+		
 		for i: int in range(len(entities.id)):
-			var img_tmp: Image = Image.new()
 			var obj_name: String = obj_id_to_name[entities.id[i]]
-			var path: String = "%s%s/%s_preview.png" % [Global.objs_path, obj_name, obj_name]
-			if img_tmp.load(path) != OK:
-				push_error("Failed to load image at path: %s" % path)
+			var path: String = "%s%s/%s.tscn" % [Global.objs_path, obj_name, obj_name]
+			if !FileAccess.file_exists(path):
+				printerr("Did not find path at " + path)
 				continue
-			var to_add: Sprite2D = Sprite2D.new()
-			to_add.texture = ImageTexture.create_from_image(img_tmp)
-			to_add.global_position = entities.pos[i]
-			newChunk.add_sprite(to_add)
+			var instance_scene: PackedScene = load(path)
+			var instance: Node2D = instance_scene.instantiate()
+			instance.global_position = entities.pos[i]
+			main_node.add_child(instance)
+			instance.owner = main_node
 	else:
 		add_objects(newChunk, entities)
 

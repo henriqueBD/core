@@ -4,7 +4,8 @@ extends Node
 
 const EXCLUDE: Array[String] = ["Camera2D", "Chunk", "Player"]
 
-static var objects_per_chunk: Dictionary[Vector2i, Dictionary]
+static var objects_per_chunk: Dictionary[Vector2i, Dictionary] = {}
+static var chunks_changed: Dictionary[Vector2i, bool] = {}
 
 var obj_script: Script
 
@@ -33,10 +34,25 @@ func _on_child_entered(node: Node) -> void:
 
 func _on_chunk_child_leaving(node: Node) -> void:
 	var chunk: chunk_tile = node as chunk_tile
+	
 	if !chunk: return
-	if !objects_per_chunk.has(chunk.coords): return
+	if (!objects_per_chunk.has(chunk.coords) or 
+		!chunks_changed.has(chunk.coords)): return
+	
+	chunks_changed.erase(chunk.coords)
+	chunk.clear_entity_backend()
+	
+	var save: bool = false
+	
 	for nd: Node in objects_per_chunk[chunk.coords]:
 		if not nd: continue
+		nd.queue_free()
 		var obj: tracking_obj = nd as tracking_obj
 		if not obj: continue
-		print(obj.obj_name)
+		chunk.add_entity_backend(obj.obj_id, obj.global_position)
+		save = true
+	
+	if !save: return
+	
+	objects_per_chunk.erase(chunk.coords)
+	chunk._save_entities()

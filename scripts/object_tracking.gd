@@ -25,6 +25,7 @@ func _on_transform_changed() -> void:
 		entity_signal.objects_per_chunk[new_chunk_pos] = {}
 	
 	entity_signal.objects_per_chunk[new_chunk_pos][self] = true
+	entity_signal.chunks_changed[new_chunk_pos] = true
 	
 	#remove old reference
 	_remove_self_from_dict()
@@ -35,6 +36,8 @@ func _on_transform_changed() -> void:
 func _remove_self_from_dict() -> void:
 	if !entity_signal.objects_per_chunk.has(curr_chunk): return
 	
-	entity_signal.objects_per_chunk[curr_chunk].erase(self)
-	if entity_signal.objects_per_chunk[curr_chunk].is_empty():
+	entity_signal.chunks_changed[curr_chunk] = true
+	var chunk_dict: Dictionary = entity_signal.objects_per_chunk[curr_chunk]
+	chunk_dict.erase(self)
+	if chunk_dict.is_empty():
 		entity_signal.objects_per_chunk.erase(curr_chunk)
