@@ -126,6 +126,8 @@ func load_chunk(load_coords: Vector2i) -> void:
 		var main_node: Node = self.get_parent()
 		if !main_node: return
 		
+		entity_signal.is_freezed = true
+		
 		for i: int in range(len(entities.id)):
 			var obj_name: String = obj_id_to_name[entities.id[i]]
 			var path: String = "%s%s/%s.tscn" % [Global.objs_path, obj_name, obj_name]
@@ -137,6 +139,8 @@ func load_chunk(load_coords: Vector2i) -> void:
 			instance.global_position = entities.pos[i]
 			main_node.add_child(instance)
 			instance.owner = main_node
+		
+		entity_signal.is_freezed = false
 	else:
 		add_objects(newChunk, entities)
 

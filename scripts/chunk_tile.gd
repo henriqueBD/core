@@ -430,9 +430,9 @@ func remove_swap(arr: Array, index: int) -> void:
 
 
 func unload() -> void:
-	if changed_entities:
-		print("Saving chunk entities: " + str(coords))
-		_save_entities()
+	#if changed_entities:
+		#print("Saving chunk entities: " + str(coords))
+		#_save_entities()
 	if changed_terrain:
 		print("Saving chunk terrain: " + str(coords))
 		_save_terrain()

@@ -7,6 +7,8 @@ const EXCLUDE: Array[String] = ["Camera2D", "Chunk", "Player"]
 static var objects_per_chunk: Dictionary[Vector2i, Dictionary] = {}
 static var chunks_changed: Dictionary[Vector2i, bool] = {}
 
+static var is_freezed: bool
+
 var obj_script: Script
 
 @onready var chunks: chunk_mng = $Chunk
@@ -49,6 +51,7 @@ func _on_chunk_child_leaving(node: Node) -> void:
 		nd.queue_free()
 		var obj: tracking_obj = nd as tracking_obj
 		if not obj: continue
+		obj.chunk_unloaded = true
 		chunk.add_entity_backend(obj.obj_id, obj.global_position)
 		save = true
 	
@@ -56,3 +59,4 @@ func _on_chunk_child_leaving(node: Node) -> void:
 	
 	objects_per_chunk.erase(chunk.coords)
 	chunk._save_entities()
+	print("Saving chunk")
