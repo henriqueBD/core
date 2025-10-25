@@ -179,10 +179,14 @@ func _change_selected_obj(obj_name: String) -> void:
 	_curr_obj_index = _obj_id_to_index[chunk_mng.hash_string(obj_name)]
 
 func _add_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
-	
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 			_change_state(EDITOR_STATE.unreachable)
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			if Input.is_key_label_pressed(KEY_SHIFT):
+				delete_chunk()
+			else:
+				create_new_chunk()
 	
 	if event is InputEventMouseMotion:
 		var new_chunk: Vector2i = chunk_mng.world_to_chunk_key(mouse_pos)
@@ -191,6 +195,28 @@ func _add_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
 			update_overlays()
 	
 	return true
+
+func create_new_chunk() -> void:
+	if FileAccess.file_exists(chunk_mng.get_chunk_path(_curr_chunk_selected)): return
+	print("Creating chunk " + str(_curr_chunk_selected))
+	_chunks.create_empty_chunk(_curr_chunk_selected)
+
+func delete_chunk() -> void:
+	var save_previous: bool = _chunks.save_on_exit
+	_chunks.save_on_exit = false
+	_chunks.unload_chunk(_curr_chunk_selected)
+	_chunks.save_on_exit = save_previous
+	
+	#chunk terrain path
+	var path: String = chunk_mng.get_chunk_path(_curr_chunk_selected)
+	if !FileAccess.file_exists(path): return
+	print("Deleting chunk " + str(_curr_chunk_selected))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	
+	#chunk entities path
+	path = chunk_tile.get_entities_map(_curr_chunk_selected)
+	if !FileAccess.file_exists(path): return
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 #endregion
 
@@ -224,12 +250,7 @@ func _place_obj_draw(viewport_control: Control) -> void:
 func _add_chunk_draw(viewport_control: Control) -> void:
 	var chunk_top_left: Vector2 = _curr_chunk_selected * Global.CHUNK_SIDE
 	var camera: Transform2D = EditorInterface.get_editor_viewport_2d().global_canvas_transform
-
-	print(camera)
-	# Convert the global position (chunk's top-left corner) to screen position
 	var screen_pos: Vector2 = camera * chunk_top_left
-	# Draw the rectangle in the screen space
-	# Assuming you want to draw on the `viewport_control` canvas:
 	var chunk_side_scaled: Vector2 = Vector2(Global.CHUNK_SIDE, Global.CHUNK_SIDE) * _get_editor_zoom_ammount()
 	viewport_control.draw_rect(
 		Rect2(screen_pos, chunk_side_scaled),

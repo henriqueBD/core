@@ -18,6 +18,9 @@ enum TILE_TYPE { AIR, dirt, stone, gold, clovium }
 
 enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
 
+static func get_entities_map(entities_cord: Vector2i) -> String:
+	return "res://entities_map/%d-%d.res" % [entities_cord.x, entities_cord.y]
+
 func initialize(c: Vector2i, sprite_array: Array[Image], dict_chunks: Dictionary[Vector2i, chunk_tile], data_empty: PackedByteArray = []) -> obj_chunk:
 	self.set_process(false)
 	_chunks_loaded = dict_chunks
@@ -56,7 +59,7 @@ func initialize(c: Vector2i, sprite_array: Array[Image], dict_chunks: Dictionary
 	
 	# Load entities
 	entities = obj_chunk.new()
-	var path: String = "res://entities_map/" + str(coords.x) + "-" + str(coords.y) + ".res"
+	var path: String = get_entities_map(self.coords)
 	if FileAccess.file_exists(path):
 		entities = ResourceLoader.load(path)
 		return entities
@@ -438,7 +441,7 @@ func unload() -> void:
 		_save_terrain()
 
 func _save_entities() -> void:
-	var file_path: String = "res://entities_map/" + str(coords.x) + "-" + str(coords.y) + ".res"
+	var file_path: String = get_entities_map(self.coords)
 	if len(entities.id) > 0:
 		ResourceSaver.save(entities, file_path)
 	else:

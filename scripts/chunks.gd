@@ -145,10 +145,7 @@ func unload_chunk(unloadCoords: Vector2i) -> void:
 	if !chunksDict.has(unloadCoords): return
 	var chunk_to_remove: chunk_tile = chunksDict[unloadCoords]
 	
-	if save_on_exit:
-		print("unloading and saving " + str(unloadCoords))
-	else:
-		#print("unloading " + str(unloadCoords))
+	if !save_on_exit:
 		chunk_to_remove._terrain_really_changed = false
 		chunk_to_remove.changed_terrain = false
 		chunk_to_remove.changed_entities = false
@@ -157,8 +154,8 @@ func unload_chunk(unloadCoords: Vector2i) -> void:
 	chunksDict.erase(unloadCoords)
 	chunk_to_remove.queue_free()
 
-func is_chunk_in_bounds(check: Vector2i) -> bool:
-	return FileAccess.file_exists(get_chunk_path(check))
+func is_chunk_in_bounds(check_coords: Vector2i) -> bool:
+	return FileAccess.file_exists(get_chunk_path(check_coords))
 
 func is_chunk_loaded(world_point: Vector2) -> bool:
 	return chunksDict.has(world_to_chunk_key(world_point))
@@ -335,11 +332,10 @@ func delete_objects_chunk(area: Area2D) -> void:
 		return
 	chunk_to_delete.editor_delete_entity(area)
 
-func createEmptyChunk(new_chunk_pos: Vector2i) -> void:
-	if is_chunk_in_bounds(new_chunk_pos) or new_chunk_pos.x < 0 or new_chunk_pos.y < 0: return
-	print("creating new chunk " + str(new_chunk_pos))
+func create_empty_chunk(new_chunk_pos: Vector2i) -> void:
 	var newChunk: chunk_tile = chunk_scene.instantiate()
 	newChunk.initialize(new_chunk_pos, tile_sprites, chunksDict, emptyChunkTemplate)
+	newChunk._save_terrain()
 	add_child(newChunk)
 	chunksDict[new_chunk_pos] = newChunk
 
