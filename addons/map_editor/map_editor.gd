@@ -28,6 +28,8 @@ var _should_update: bool = false
 var _same_scene: bool = true
 var _same_workplace: bool = true
 
+var _curr_chunk_selected: Vector2i
+
 # -============================(v)================================- #
 ## Utilize o dict chunk_mng.obj_id_to_name[id: int] para (id -> nome)
 ## Utilize chunk_mng.hash_string(nome: String) para (nome -> id)
@@ -75,8 +77,8 @@ func _process(delta: float) -> void:
 	##TODO: Reimplementar o jeito de mudar de estado
 	if Input.is_key_label_pressed(KEY_1):
 		_change_state(EDITOR_STATE.terraform)
-	#elif Input.is_key_label_pressed(KEY_2):
-		#_change_state(EDITOR_STATE.place_obj)
+	elif Input.is_key_label_pressed(KEY_2):
+		_change_state(EDITOR_STATE.add_chunk)
 	elif Input.is_key_label_pressed(KEY_0):
 		_change_state(EDITOR_STATE.unreachable)
 	
@@ -112,6 +114,8 @@ func _forward_canvas_gui_input(event: InputEvent) -> bool:
 		EDITOR_STATE.terraform:
 			update_overlays()
 			return _terraform(event, mouse_pos)
+		EDITOR_STATE.add_chunk:
+			return _add_chunk(event, mouse_pos)
 	
 	return false
 
@@ -146,14 +150,6 @@ func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
 
 func _place_obj_enter() -> void:
 	_change_selected_obj(_obj_names[clamp(_curr_obj_index, 0, len(_obj_names)-1)])
-	#var img_tmp: Image = Image.new()
-	#var obj_name := _obj_names[_curr_obj_index]
-	#var path := Global.objs_path + obj_name + "/" + obj_name + "_preview.png"
-	#var error := img_tmp.load(path)
-	#if error != OK:
-		#push_error("Failed to load image at path: %s" % path)
-		#return
-	#_curr_obj_preview = ImageTexture.create_from_image(img_tmp)
 
 func _place_obj(event: InputEvent, mouse_pos: Vector2) -> bool:
 	var leave: bool = false
@@ -182,6 +178,20 @@ func _change_selected_obj(obj_name: String) -> void:
 	_curr_obj_preview = ImageTexture.create_from_image(img_tmp)
 	_curr_obj_index = _obj_id_to_index[chunk_mng.hash_string(obj_name)]
 
+func _add_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
+	
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			_change_state(EDITOR_STATE.unreachable)
+	
+	if event is InputEventMouseMotion:
+		var new_chunk: Vector2i = chunk_mng.world_to_chunk_key(mouse_pos)
+		if new_chunk != _curr_chunk_selected:
+			_curr_chunk_selected = new_chunk
+			update_overlays()
+	
+	return true
+
 #endregion
 
 #region state draw
@@ -192,6 +202,8 @@ func _forward_canvas_draw_over_viewport(viewport_control: Control) -> void:
 			_place_obj_draw(viewport_control)
 		EDITOR_STATE.terraform:
 			_terraform_draw(viewport_control)
+		EDITOR_STATE.add_chunk:
+			_add_chunk_draw(viewport_control)
 
 func _terraform_draw(viewport_control: Control) -> void:
 	var zoom: float = _get_editor_zoom_ammount()
@@ -208,6 +220,21 @@ func _place_obj_draw(viewport_control: Control) -> void:
 		var draw_pos: Vector2 = viewport_control.get_local_mouse_position() - texture_size * 0.5
 		var rect := Rect2(draw_pos, texture_size)
 		viewport_control.draw_texture_rect(_curr_obj_preview, rect, false)
+
+func _add_chunk_draw(viewport_control: Control) -> void:
+	var chunk_top_left: Vector2 = _curr_chunk_selected * Global.CHUNK_SIDE
+	var camera: Transform2D = EditorInterface.get_editor_viewport_2d().global_canvas_transform
+
+	print(camera)
+	# Convert the global position (chunk's top-left corner) to screen position
+	var screen_pos: Vector2 = camera * chunk_top_left
+	# Draw the rectangle in the screen space
+	# Assuming you want to draw on the `viewport_control` canvas:
+	var chunk_side_scaled: Vector2 = Vector2(Global.CHUNK_SIDE, Global.CHUNK_SIDE) * _get_editor_zoom_ammount()
+	viewport_control.draw_rect(
+		Rect2(screen_pos, chunk_side_scaled),
+		 Color(0, 0, 1, 0.5) if _chunks.chunksDict.has(_curr_chunk_selected) else Color(1, 0, 0, 0.5)
+	)
 
 #endregion
 
