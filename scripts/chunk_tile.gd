@@ -438,8 +438,12 @@ func unload() -> void:
 		_save_terrain()
 
 func _save_entities() -> void:
+	var file_path: String = "res://entities_map/" + str(coords.x) + "-" + str(coords.y) + ".res"
 	if len(entities.id) > 0:
-		ResourceSaver.save(entities, "res://entities_map/" + str(coords.x) + "-" + str(coords.y) + ".res")
+		ResourceSaver.save(entities, file_path)
+	else:
+		if FileAccess.file_exists(file_path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(file_path))
 
 func _save_terrain() -> void:
 	var target_path: String = chunk_mng.get_chunk_path(coords)

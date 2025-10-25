@@ -38,8 +38,7 @@ func _on_chunk_child_leaving(node: Node) -> void:
 	var chunk: chunk_tile = node as chunk_tile
 	
 	if !chunk: return
-	if (!objects_per_chunk.has(chunk.coords) or 
-		!chunks_changed.has(chunk.coords)): return
+	if !objects_per_chunk.has(chunk.coords): return
 	
 	chunks_changed.erase(chunk.coords)
 	chunk.clear_entity_backend()
@@ -47,16 +46,22 @@ func _on_chunk_child_leaving(node: Node) -> void:
 	var save: bool = false
 	
 	for nd: Node in objects_per_chunk[chunk.coords]:
-		if not nd: continue
+		if not nd:
+			print("what 0")
+			continue
 		nd.queue_free()
 		var obj: tracking_obj = nd as tracking_obj
-		if not obj: continue
+		if not obj:
+			print("What 1")
+			continue
 		obj.chunk_unloaded = true
 		chunk.add_entity_backend(obj.obj_id, obj.global_position)
-		save = true
+		if obj.changed():
+			save = true
+	
+	objects_per_chunk.erase(chunk.coords)
 	
 	if !save: return
 	
-	objects_per_chunk.erase(chunk.coords)
 	chunk._save_entities()
-	print("Saving chunk")
+	print("Saving chunk entities: " + str(chunk.coords))
