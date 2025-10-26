@@ -44,8 +44,8 @@ func _ready() -> void:
 	
 	change_rect(collision_shape.shape.get_rect())
 	
-	remove_child(collision_shape)
-	collision_shape.queue_free()
+	#remove_child(collision_shape)
+	#collision_shape.queue_free()
 
 ## PUBLIC MOVEMENT METHOD ##
 

@@ -11,6 +11,15 @@ var start_global_pos: Vector2
 var chunk_unloaded: bool = false
 
 func _ready() -> void:
+
+	self.set_process(false)
+	
+	if !Engine.is_editor_hint():
+		printerr("No editor objects allowed in game")
+		self.set_script(null)
+		queue_free()
+		return
+	
 	var original_pos: Variant = self.get_meta("original_pos", NAN)
 	if original_pos is Vector2:
 		print("Adding from chunk")
@@ -25,7 +34,6 @@ func _ready() -> void:
 		print("Adding from editor")
 	
 	connect("tree_exiting", _remove_self_from_dict)
-	self.set_process(false)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSFORM_CHANGED:

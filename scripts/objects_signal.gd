@@ -13,11 +13,24 @@ var obj_script: Script
 
 @onready var chunks: chunk_mng = $Chunk
 
+func _enter_tree() -> void:
+	if !Engine.is_editor_hint():
+		self.set_script(null)
+
 func _ready() -> void:
+	
 	self.set_process(false)
+	
+	if !Engine.is_editor_hint():
+		printerr("No editor scripts in game")
+		self.set_script(null)
+		return
+	
 	_try_connect("child_entered_tree", _on_child_entered)
+	
 	if !chunks.is_connected("child_exiting_tree", _on_chunk_child_leaving):
 		chunks.connect("child_exiting_tree", _on_chunk_child_leaving)
+	
 	obj_script = load("res://scripts/object_tracking.gd")
 
 func _try_connect(name_signal: String, fn: Callable) -> void:

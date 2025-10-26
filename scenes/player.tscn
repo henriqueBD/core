@@ -46,7 +46,7 @@ sprite_frames = SubResource("SpriteFrames_qlg0r")
 animation = &"idle"
 autoplay = "idle"
 
-[node name="Collision" type="Node2D" parent="."]
+[node name="Collision" type="Area2D" parent="."]
 position = Vector2(4, -10)
 script = ExtResource("3_qhqgy")
 

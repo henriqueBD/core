@@ -314,6 +314,11 @@ func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 	for i: int in range(len(objs.id)):
 		var obj_name: String = obj_id_to_name[objs.id[i]]
 		var path: String = "res://entities/%s/%s.tscn" % [obj_name, obj_name]
+		
+		if !FileAccess.file_exists(path):
+			printerr("could not find file at " + path)
+			continue
+		
 		var tmp: PackedScene = load(path)
 		var obj: Area2D = tmp.instantiate()
 		obj.global_position = objs.pos[i]

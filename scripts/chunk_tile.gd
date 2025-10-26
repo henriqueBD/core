@@ -301,7 +301,6 @@ func fix_borders() -> void:
 	
 	if _terrain_really_changed:
 		tex.update(img)
-		changed_terrain = true
 
 func _fix_borders_helper(coord_tmp: Vector2i) -> void:
 	assert(is_grid_pos_in_bounds(coord_tmp))
