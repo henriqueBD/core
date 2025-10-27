@@ -1,9 +1,11 @@
 extends Area2D
 
 const MAX_FALLING_SEC: float = 1.0
+const DESTROY_AFTER_TOUCH_SEC: float = 0.1
 const FALLING_SPEED: float = 100
 
 var timer_self_destroy: float = 0.0
+var timer_touch: float = 0.0
 
 @onready var player_detection: CollisionShape2D = $player_detection
 @onready var spike_collision: CollisionShape2D = $spike_collision
@@ -35,13 +37,21 @@ func _process(delta: float) -> void:
 	timer_self_destroy += delta
 	
 	if timer_self_destroy > MAX_FALLING_SEC:
-		_bye_bye()
+		_destroy()
 		return
 	
 	self.global_position.y += FALLING_SPEED * delta
 	destroy_rect.position.y = self.global_position.y
 	
+	var res: Vector2 = chunks.eval_area(destroy_rect, 1)
+	
+	if timer_touch > 0.0 or !is_nan(res.x):
+		timer_touch += delta
+	
+	if timer_touch > DESTROY_AFTER_TOUCH_SEC or !is_nan(res.y):
+		_destroy()
+	
 	chunks.break_tiles(destroy_rect, 1)
 
-func _bye_bye() -> void:
+func _destroy() -> void:
 	queue_free()

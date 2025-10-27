@@ -170,6 +170,7 @@ func world_to_chunk(world_pos: Vector2) -> chunk_tile:
 	var key: Vector2i = world_to_chunk_key(world_pos)
 	return chunksDict[key]
 
+#check chunk_to_eval.eval_area for more info
 func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
 	var chunk_to_eval: chunk_tile = world_to_chunk(area_rect.position)
 	return chunk_to_eval.eval_area(area_rect, mining_force)

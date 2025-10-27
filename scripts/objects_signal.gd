@@ -15,6 +15,10 @@ var obj_script: Script
 
 func _enter_tree() -> void:
 	if !Engine.is_editor_hint():
+		for c: Node in self.get_children():
+			if c.get_script() == obj_script:
+				c.queue_free()
+				print("Removed editor object")
 		self.set_script(null)
 
 func _ready() -> void:
