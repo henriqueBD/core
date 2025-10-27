@@ -5,7 +5,7 @@ extends Node
 const EXCLUDE: Array[String] = ["Camera2D", "Chunk", "Player"]
 
 static var objects_per_chunk: Dictionary[Vector2i, Dictionary] = {}
-static var chunks_changed: Dictionary[Vector2i, bool] = {}
+static var chunks_force_save: Dictionary[Vector2i, bool] = {}
 
 static var is_freezed: bool
 
@@ -32,6 +32,10 @@ func _ready() -> void:
 		chunks.connect("child_exiting_tree", _on_chunk_child_leaving)
 	
 	obj_script = load("res://scripts/object_tracking.gd")
+	
+	for c: Node in self.get_children():
+		if c.get_script() == obj_script:
+			c.queue_free()
 
 func _try_connect(name_signal: String, fn: Callable) -> void:
 	if !is_connected(name_signal, fn):
@@ -51,12 +55,13 @@ func _on_chunk_child_leaving(node: Node) -> void:
 	var chunk: chunk_tile = node as chunk_tile
 	
 	if !chunk: return
-	if !objects_per_chunk.has(chunk.coords): return
-	
-	chunks_changed.erase(chunk.coords)
 	chunk.clear_entity_backend()
+	if !objects_per_chunk.has(chunk.coords):
+		chunk._save_entities()
+		return
 	
-	var save: bool = false
+	var save: bool = chunks_force_save.has(chunk.coords)
+	chunks_force_save.erase(chunk.coords)
 	
 	for nd: Node in objects_per_chunk[chunk.coords]:
 		if not nd:

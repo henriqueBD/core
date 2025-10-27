@@ -10,8 +10,14 @@ var start_global_pos: Vector2
 
 var chunk_unloaded: bool = false
 
-func _ready() -> void:
+func _enter_tree() -> void:
+	if !Engine.is_editor_hint():
+		printerr("No editor objects allowed in game")
+		self.set_script(null)
+		queue_free()
+		return
 
+func _ready() -> void:
 	self.set_process(false)
 	
 	if !Engine.is_editor_hint():
@@ -65,8 +71,8 @@ func changed() -> bool:
 func _remove_self_from_dict() -> void:
 	if !entity_signal.objects_per_chunk.has(curr_chunk): return
 	
-	#if !chunk_unloaded:
-		#entity_signal.chunks_changed[curr_chunk] = true
+	if !chunk_unloaded:
+		entity_signal.chunks_force_save[curr_chunk] = true
 	
 	var chunk_dict: Dictionary = entity_signal.objects_per_chunk[curr_chunk]
 	chunk_dict.erase(self)
