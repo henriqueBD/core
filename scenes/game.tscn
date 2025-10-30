@@ -14,7 +14,6 @@ zoom = Vector2(3, 3)
 script = ExtResource("1_lnu2h")
 
 [node name="Chunk" parent="." instance=ExtResource("2_yqjtg")]
-save_on_exit = false
 
 [node name="Player" parent="." instance=ExtResource("3_lnu2h")]
 position = Vector2(26, 78)

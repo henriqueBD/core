@@ -32,9 +32,7 @@ func initialize(c: Vector2i, sprite_array: Array[Image], dict_chunks: Dictionary
 	else:
 		data = decompress_chunk(data_empty)
 	
-	if data.size() == 0:
-		print("oops")
-		return null
+	assert(data.size() == 65025)
 	
 	self.position.x += c.x * Global.CHUNK_SIDE
 	self.position.y += c.y * Global.CHUNK_SIDE

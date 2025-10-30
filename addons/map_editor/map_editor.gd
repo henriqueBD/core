@@ -254,7 +254,7 @@ func _add_chunk_draw(viewport_control: Control) -> void:
 	var chunk_side_scaled: Vector2 = Vector2(Global.CHUNK_SIDE, Global.CHUNK_SIDE) * _get_editor_zoom_ammount()
 	viewport_control.draw_rect(
 		Rect2(screen_pos, chunk_side_scaled),
-		 Color(0, 0, 1, 0.5) if _chunks.chunksDict.has(_curr_chunk_selected) else Color(1, 0, 0, 0.5)
+		 Color(0, 0, 1, 0.5) if _chunks._chunks_dict.has(_curr_chunk_selected) else Color(1, 0, 0, 0.5)
 	)
 
 #endregion
