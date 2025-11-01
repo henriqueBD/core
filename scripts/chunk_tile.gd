@@ -159,7 +159,7 @@ static func create_texture_from_terrain_data(terrain_data: PackedByteArray) -> I
 		if curr_tile == TILE_TYPE.AIR: 
 			terrain_img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[0])
 			continue
-		if (
+		if !(
 			grid_img_coords.x > 0 and grid_img_coords.x < Global.CHUNK_SIDE-1 and
 			grid_img_coords.y > 0 and grid_img_coords.y < Global.CHUNK_SIDE-1 and
 			terrain_data[(grid_img_coords.y + 1) * Global.CHUNK_SIDE + grid_img_coords.x] == curr_tile and 

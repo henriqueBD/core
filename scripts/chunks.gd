@@ -89,7 +89,7 @@ func _loader_process() -> void:
 			print("Loading in thread " + str(chunk_to_load_coords))
 			_array_load_mutex.unlock()
 			
-			var new_chunk: chunk_tile = chunk_scene.instantiate()
+			var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
 			
 			var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
 			
@@ -101,7 +101,8 @@ func _loader_process() -> void:
 			
 			var terrain_texture: ImageTexture = chunk_tile.create_texture_from_terrain_data(terrain_data)
 			
-			new_chunk.initialize_deffered(chunk_to_load_coords, terrain_data, terrain_texture)
+			call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
+			new_chunk_instance.initialize_deffered(chunk_to_load_coords, terrain_data, terrain_texture)
 			
 			#self.texture = tex
 			#
@@ -324,9 +325,7 @@ func _load_chunk(load_coords: Vector2i) -> void:
 	coord_tmp = load_coords + Vector2i.RIGHT
 	if _chunks_dict.has(coord_tmp): _chunks_dict[coord_tmp].fix_borders()
 	
-	add_child(newChunk)
-	newChunk.owner = self
-	_chunks_dict[load_coords] = newChunk
+	_instantiate_chunk(newChunk, load_coords)
 	
 	if entities == null: return
 	
@@ -349,6 +348,11 @@ func _load_chunk(load_coords: Vector2i) -> void:
 			instance.owner = main_node
 	else:
 		add_objects(newChunk, entities)
+
+func _instantiate_chunk(new_chunk: chunk_tile, new_chunk_coords: Vector2i) -> void:
+	add_child(new_chunk)
+	new_chunk.owner = self
+	_chunks_dict[new_chunk_coords] = new_chunk
 
 func _unload_chunk(unloadCoords: Vector2i) -> void:
 	if !_chunks_dict.has(unloadCoords): return
