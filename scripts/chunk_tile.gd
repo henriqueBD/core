@@ -2,15 +2,19 @@
 class_name chunk_tile
 extends Sprite2D
 
+const EXPECTED_DATA_SIZE: int = 65025
+
 var img: Image
 var tex: ImageTexture
 var coords: Vector2i = Vector2i(0,0)
 var data: PackedByteArray
-var _tile_sprites: Array[Image]
+
+var global_pos_cached: Vector2
 
 var entities: obj_chunk
 
-var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
+static var _tile_sprites: Array[Image]
+static var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
 
 #const chunk_shader: Shader = preload("res://terrain_shader.gdshader")
 
@@ -21,18 +25,16 @@ enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
 static func get_entities_map(entities_cord: Vector2i) -> String:
 	return "res://entities_map/%d-%d.res" % [entities_cord.x, entities_cord.y]
 
-func initialize(c: Vector2i, sprite_array: Array[Image], dict_chunks: Dictionary[Vector2i, chunk_tile], data_empty: PackedByteArray = []) -> obj_chunk:
+func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	self.set_process(false)
-	_chunks_loaded = dict_chunks
-	_tile_sprites = sprite_array
 	coords = c
 	
 	if len(data_empty) == 0:
-		data = decompress_chunk(getBytes())
+		data = decompress_chunk(get_bytes(c))
 	else:
 		data = decompress_chunk(data_empty)
 	
-	assert(data.size() == 65025)
+	assert(data.size() == EXPECTED_DATA_SIZE)
 	
 	self.position.x += c.x * Global.CHUNK_SIDE
 	self.position.y += c.y * Global.CHUNK_SIDE
@@ -64,8 +66,28 @@ func initialize(c: Vector2i, sprite_array: Array[Image], dict_chunks: Dictionary
 	else:
 		return null
 
-func getBytes() -> PackedByteArray:
-	var targetName: String = chunk_mng.get_chunk_path(coords)
+func initialize_deffered(key: Vector2i, decompressed_data: PackedByteArray, sprite: ImageTexture) -> obj_chunk:
+	#_initialize_deffered_helper(key, decompressed_data, sprite)
+	call_deferred("_initialize_deffered_helper", key, decompressed_data, sprite)
+	return null
+
+func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArray, sprite: ImageTexture) -> obj_chunk:
+	self.set_process(false)
+	coords = key
+	
+	data = decompressed_data
+	assert(data.size() == EXPECTED_DATA_SIZE)
+	
+	#self.position.x += key.x * Global.CHUNK_SIDE
+	#self.position.y += key.y * Global.CHUNK_SIDE
+	self.global_position = Global.CHUNK_SIDE * key
+	
+	self.texture = sprite
+	
+	return null
+
+static func get_bytes(coords_tmp: Vector2i) -> PackedByteArray:
+	var targetName: String = chunk_mng.get_chunk_path(coords_tmp)
 	var file: FileAccess = FileAccess.open(targetName, FileAccess.READ)
 	if file:
 		var size: int = file.get_length()
@@ -73,7 +95,7 @@ func getBytes() -> PackedByteArray:
 		file.close()
 		return dataTmp
 	else:
-		print("Failed to open file:", name)
+		print("Failed to open file for chunk ", str(coords_tmp))
 		return []
 
 func _has_same_neighborsv(coord_check: Vector2i) -> bool:
@@ -88,7 +110,7 @@ func _has_same_neighbors(x_check: int, y_check: int) -> bool:
 		_get_tile_safe(x_check, y_check - 1) == type_check
 	)
 
-func decompress_chunk(compressed_data: PackedByteArray) -> PackedByteArray:
+static func decompress_chunk(compressed_data: PackedByteArray) -> PackedByteArray:
 	var decompressed_data: PackedByteArray = PackedByteArray()
 	
 	const REPEAT_BYTE_MARKER: int = 255
@@ -128,8 +150,35 @@ func decompress_chunk(compressed_data: PackedByteArray) -> PackedByteArray:
 			
 	return decompressed_data
 
+static func create_texture_from_terrain_data(terrain_data: PackedByteArray) -> ImageTexture:
+	var terrain_img: Image = Image.create_empty(Global.CHUNK_SIDE, Global.CHUNK_SIDE, false, Image.FORMAT_RGBA8)
+	
+	for i: int in range(terrain_data.size()):
+		var grid_img_coords: Vector2i = Vector2i(i % Global.CHUNK_SIDE, i / Global.CHUNK_SIDE)
+		var curr_tile: TILE_TYPE = terrain_data[i] as TILE_TYPE
+		if curr_tile == TILE_TYPE.AIR: 
+			terrain_img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[0])
+			continue
+		if (
+			grid_img_coords.x > 0 and grid_img_coords.x < Global.CHUNK_SIDE-1 and
+			grid_img_coords.y > 0 and grid_img_coords.y < Global.CHUNK_SIDE-1 and
+			terrain_data[(grid_img_coords.y + 1) * Global.CHUNK_SIDE + grid_img_coords.x] == curr_tile and 
+			terrain_data[grid_img_coords.y * Global.CHUNK_SIDE + (grid_img_coords.x + 1)] == curr_tile and
+			terrain_data[(grid_img_coords.y - 1) * Global.CHUNK_SIDE + grid_img_coords.x] == curr_tile and 
+			terrain_data[grid_img_coords.y * Global.CHUNK_SIDE + (grid_img_coords.x - 1)] == curr_tile
+			):
+			terrain_img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[terrain_data[i]])
+		else:
+			terrain_img.set_pixelv(
+				grid_img_coords, 
+				_tile_sprites[terrain_data[i]].get_pixelv(Vector2i((grid_img_coords)) % _tile_sprites[terrain_data[i]].get_size())
+			)
+	
+	return ImageTexture.create_from_image(terrain_img)
+
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos: Vector2 = to_local(world_pos)
+	#var local_pos: Vector2 = global_pos_cached - world_pos
 	return Vector2i(floor(local_pos.x), floor(local_pos.y))
 
 func grid_to_world(grid_pos: Vector2i, tile_pos: TILE_POS) -> Vector2:

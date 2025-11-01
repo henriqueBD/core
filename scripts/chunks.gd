@@ -18,7 +18,11 @@ var player: player_character
 
 var _chunks_dict: Dictionary[Vector2i, chunk_tile] = {}
 var _chunks_buff_dict: Dictionary[Vector2i, bool]
-var _chunk_load_queue: Dictionary[Vector2i, bool] = {}
+
+var _array_load_mutex: Mutex = Mutex.new()
+var _loader_continue: bool = true
+var _loader_thread: Thread
+var _chunk_load_queue: Array[Vector2i] = []
 
 var _last_center_chunk: Vector2i = Vector2i(-1, -1)
 var _curr_center_chunk: Vector2i
@@ -58,10 +62,61 @@ func late_ready() -> void:
 	for i: int in range(1, len(tile_sprites)):
 		assert(tile_sprites[i] != null)
 	
+	chunk_tile._tile_sprites = tile_sprites
+	chunk_tile._chunks_loaded = _chunks_dict
+	
 	if obj_id_to_name.is_empty():
 		_load_obj_list()
 	
 	_load_chunk(Vector2i(0,0))
+	
+	_loader_thread = Thread.new()
+	_loader_thread.start(_loader_process)
+
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		if editor_stuff_active:
+			load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
+	else:
+		load_nearby_chunks(player.global_position)
+
+func _loader_process() -> void:
+	while _loader_continue:
+		if !_chunk_load_queue.is_empty():
+			
+			_array_load_mutex.lock()
+			var chunk_to_load_coords: Vector2i = _chunk_load_queue.pop_front()
+			print("Loading in thread " + str(chunk_to_load_coords))
+			_array_load_mutex.unlock()
+			
+			var new_chunk: chunk_tile = chunk_scene.instantiate()
+			
+			var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
+			
+			assert(terrain_data.size() == chunk_tile.EXPECTED_DATA_SIZE)
+			
+			var global_pos: Vector2
+			global_pos.x += chunk_to_load_coords.x * Global.CHUNK_SIDE
+			global_pos.y += chunk_to_load_coords.y * Global.CHUNK_SIDE
+			
+			var terrain_texture: ImageTexture = chunk_tile.create_texture_from_terrain_data(terrain_data)
+			
+			new_chunk.initialize_deffered(chunk_to_load_coords, terrain_data, terrain_texture)
+			
+			#self.texture = tex
+			#
+			## Load entities
+			#entities = obj_chunk.new()
+			#var path: String = get_entities_map(self.coords)
+			#if FileAccess.file_exists(path):
+				#entities = ResourceLoader.load(path)
+				#return entities
+			#else:
+				#return null
+
+func _loader_end() -> void:
+	_loader_continue = false
+	_loader_thread.wait_to_finish()
 
 func _load_tile_resources() -> void:
 	tile_sprites = [null]
@@ -204,13 +259,6 @@ func break_tiles(world_rect: Rect2, mining_force: int) -> void:
 		_chunks_dict.has(chunk_bottom_left)):
 		_chunks_dict[chunk_bottom_left].break_tiles(world_rect, mining_force)
 
-func _process(_delta: float) -> void:
-	if Engine.is_editor_hint():
-		if editor_stuff_active:
-			load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
-	else:
-		load_nearby_chunks(player.global_position)
-
 func load_nearby_chunks(global_pos: Vector2) -> void:
 	_curr_center_chunk = world_to_chunk_key(global_pos)
 	if _curr_center_chunk == _last_center_chunk:
@@ -227,7 +275,10 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 			if is_chunk_in_bounds(chunk_to_check):
 				_chunks_buff_dict[chunk_to_check] = true
 				if not _chunks_dict.has(chunk_to_check):
-					_load_chunk(chunk_to_check)
+					#_load_chunk(chunk_to_check)
+					_array_load_mutex.lock()
+					_chunk_load_queue.append(chunk_to_check)
+					_array_load_mutex.unlock()
 					if Engine.is_editor_hint(): 
 						editor_msg += "({x}, {y}) ".format({"x": chunk_to_check.x, "y": chunk_to_check.y})
 	
@@ -260,7 +311,7 @@ func _load_chunk(load_coords: Vector2i) -> void:
 	#print("loading " + str(load_coords))
 	
 	var newChunk: chunk_tile = chunk_scene.instantiate()
-	var entities: obj_chunk = newChunk.initialize(load_coords, tile_sprites, _chunks_dict)
+	var entities: obj_chunk = newChunk.initialize(load_coords)
 	
 	newChunk.fix_borders()
 	
@@ -341,7 +392,7 @@ func delete_objects_chunk(area: Area2D) -> void:
 
 func create_empty_chunk(new_chunk_pos: Vector2i) -> void:
 	var newChunk: chunk_tile = chunk_scene.instantiate()
-	newChunk.initialize(new_chunk_pos, tile_sprites, _chunks_dict, emptyChunkTemplate)
+	newChunk.initialize(new_chunk_pos, emptyChunkTemplate)
 	newChunk._save_terrain()
 	add_child(newChunk)
 	_chunks_dict[new_chunk_pos] = newChunk
@@ -375,6 +426,7 @@ func add_object_viewport(world_pos: Vector2, obj_id: int) -> void:
 #endregion
 
 func _exit_tree() -> void:
+	_loader_end()
 	unload_all_chunks()
 
 func unload_all_chunks() -> void:
