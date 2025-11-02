@@ -51,27 +51,41 @@ func _enter_tree() -> void:
 	else:
 		Global.chunks = self
 	
-	_load_obj_list()
-	_load_tile_resources()
-
-func late_ready() -> void:
-	if !Engine.is_editor_hint():
-		player = Global.player_node
 	emptyChunkTemplate = FileAccess.get_file_as_bytes(emptyChunkPath)
 	assert(len(emptyChunkTemplate) > 0)
 	for i: int in range(1, len(tile_sprites)):
 		assert(tile_sprites[i] != null)
 	
+	_load_obj_list()
+	_load_tile_resources()
+	
 	chunk_tile._tile_sprites = tile_sprites
 	chunk_tile._chunks_loaded = _chunks_dict
+
+func _ready() -> void:
+	_load_chunk(Vector2i(0,0))
+	_loader_thread = Thread.new()
+	_loader_thread.start(_loader_process)
+
+func late_ready() -> void:
+	if !Engine.is_editor_hint():
+		player = Global.player_node
+	
+	#emptyChunkTemplate = FileAccess.get_file_as_bytes(emptyChunkPath)
+	#assert(len(emptyChunkTemplate) > 0)
+	#for i: int in range(1, len(tile_sprites)):
+		#assert(tile_sprites[i] != null)
+	
+	#chunk_tile._tile_sprites = tile_sprites
+	#chunk_tile._chunks_loaded = _chunks_dict
 	
 	if obj_id_to_name.is_empty():
 		_load_obj_list()
 	
-	_load_chunk(Vector2i(0,0))
-	
-	_loader_thread = Thread.new()
-	_loader_thread.start(_loader_process)
+	#_load_chunk(Vector2i(0,0))
+	#
+	#_loader_thread = Thread.new()
+	#_loader_thread.start(_loader_process)
 
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
@@ -83,10 +97,9 @@ func _process(_delta: float) -> void:
 func _loader_process() -> void:
 	while _loader_continue:
 		if !_chunk_load_queue.is_empty():
-			
 			_array_load_mutex.lock()
 			var chunk_to_load_coords: Vector2i = _chunk_load_queue.pop_front()
-			print("Loading in thread " + str(chunk_to_load_coords))
+			print("loading from thread " + str(chunk_to_load_coords))
 			_array_load_mutex.unlock()
 			
 			var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
@@ -95,29 +108,27 @@ func _loader_process() -> void:
 			
 			assert(terrain_data.size() == chunk_tile.EXPECTED_DATA_SIZE)
 			
-			var global_pos: Vector2
-			global_pos.x += chunk_to_load_coords.x * Global.CHUNK_SIDE
-			global_pos.y += chunk_to_load_coords.y * Global.CHUNK_SIDE
+			var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
 			
-			var terrain_texture: ImageTexture = chunk_tile.create_texture_from_terrain_data(terrain_data)
+			var instances: Array[Node] = []
+			var path: String = chunk_tile.get_entities_map(chunk_to_load_coords)
+			
+			if FileAccess.file_exists(path):
+				var entities: obj_chunk = ResourceLoader.load(path, "obj_chunk")
+				if entities:
+					if Engine.is_editor_hint():
+						add_objects_editor(entities)
+					else:
+						instances = _get_objects(entities)
 			
 			call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
-			new_chunk_instance.initialize_deffered(chunk_to_load_coords, terrain_data, terrain_texture)
-			
-			#self.texture = tex
-			#
-			## Load entities
-			#entities = obj_chunk.new()
-			#var path: String = get_entities_map(self.coords)
-			#if FileAccess.file_exists(path):
-				#entities = ResourceLoader.load(path)
-				#return entities
-			#else:
-				#return null
+			new_chunk_instance.initialize_deffered(chunk_to_load_coords, terrain_data, terrain_image, instances)
 
 func _loader_end() -> void:
 	_loader_continue = false
-	_loader_thread.wait_to_finish()
+	if _loader_thread:
+		print("Exiting chunk loader")
+		_loader_thread.wait_to_finish()
 
 func _load_tile_resources() -> void:
 	tile_sprites = [null]
@@ -330,22 +341,7 @@ func _load_chunk(load_coords: Vector2i) -> void:
 	if entities == null: return
 	
 	if Engine.is_editor_hint():
-		
-		var main_node: Node = self.get_parent()
-		if !main_node: return
-		
-		for i: int in range(len(entities.id)):
-			var obj_name: String = obj_id_to_name[entities.id[i]]
-			var path: String = "%s%s/%s.tscn" % [Global.objs_path, obj_name, obj_name]
-			if !FileAccess.file_exists(path):
-				printerr("Did not find path at " + path)
-				continue
-			var instance_scene: PackedScene = load(path)
-			var instance: Node2D = instance_scene.instantiate()
-			#instance.global_position = entities.pos[i]
-			instance.set_meta("original_pos", entities.pos[i])
-			main_node.add_child(instance)
-			instance.owner = main_node
+		add_objects_editor(entities)
 	else:
 		add_objects(newChunk, entities)
 
@@ -367,6 +363,23 @@ func _unload_chunk(unloadCoords: Vector2i) -> void:
 	_chunks_dict.erase(unloadCoords)
 	chunk_to_remove.queue_free()
 
+func add_objects_editor(entities: obj_chunk) -> void:
+	var main_node: Node = self.get_parent()
+	if !main_node: return
+	
+	for i: int in range(len(entities.id)):
+		var obj_name: String = obj_id_to_name[entities.id[i]]
+		var path: String = "%s%s/%s.tscn" % [Global.objs_path, obj_name, obj_name]
+		if !FileAccess.file_exists(path):
+			printerr("Did not find path at " + path)
+			continue
+		var instance_scene: PackedScene = load(path)
+		var instance: Node2D = instance_scene.instantiate()
+		#instance.global_position = entities.pos[i]
+		instance.set_meta("original_pos", entities.pos[i])
+		main_node.add_child(instance)
+		instance.owner = main_node
+
 func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 	for i: int in range(len(objs.id)):
 		var obj_name: String = obj_id_to_name[objs.id[i]]
@@ -381,6 +394,24 @@ func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 		obj.global_position = objs.pos[i]
 		chunk_to_add.editor_add_entity(obj, objs.id[i])
 	chunk_to_add.changed_entities = false
+
+func _get_objects(objs: obj_chunk) -> Array[Node]:
+	var instances: Array[Node] = []
+	
+	for i: int in range(len(objs.id)):
+		var obj_name: String = obj_id_to_name[objs.id[i]]
+		var path: String = "res://entities/%s/%s.tscn" % [obj_name, obj_name]
+		
+		if !FileAccess.file_exists(path):
+			printerr("could not find file at " + path)
+			continue
+		
+		var tmp: PackedScene = load(path)
+		var obj: Area2D = tmp.instantiate()
+		obj.global_position = objs.pos[i]
+		instances.append(obj)
+	
+	return instances
 
 static func get_chunk_path(chunk_coords: Vector2i) -> String:
 	return folderPath + str(chunk_coords.x) + "_" + str(chunk_coords.y) + ".dat"

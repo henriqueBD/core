@@ -16,8 +16,6 @@ var entities: obj_chunk
 static var _tile_sprites: Array[Image]
 static var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
 
-#const chunk_shader: Shader = preload("res://terrain_shader.gdshader")
-
 enum TILE_TYPE { AIR, dirt, stone, gold, clovium }
 
 enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
@@ -66,23 +64,27 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	else:
 		return null
 
-func initialize_deffered(key: Vector2i, decompressed_data: PackedByteArray, sprite: ImageTexture) -> obj_chunk:
-	#_initialize_deffered_helper(key, decompressed_data, sprite)
-	call_deferred("_initialize_deffered_helper", key, decompressed_data, sprite)
-	return null
+func initialize_deffered(key: Vector2i, decompressed_data: PackedByteArray, image: Image, instances: Array[Node]) -> void:
+	var sprite: ImageTexture = ImageTexture.create_from_image(image)
+	call_deferred("_initialize_deffered_helper", key, decompressed_data, image, sprite, instances)
 
-func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArray, sprite: ImageTexture) -> obj_chunk:
+func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArray, image: Image, sprite: ImageTexture, instances: Array[Node]) -> obj_chunk:
 	self.set_process(false)
-	coords = key
 	
-	data = decompressed_data
+	self.coords = key
+	
+	self.data = decompressed_data
 	assert(data.size() == EXPECTED_DATA_SIZE)
 	
-	#self.position.x += key.x * Global.CHUNK_SIDE
-	#self.position.y += key.y * Global.CHUNK_SIDE
+	self.entities = obj_chunk.new()
 	self.global_position = Global.CHUNK_SIDE * key
-	
+	self.img = image
+	self.tex = sprite
 	self.texture = sprite
+	
+	for obj: Node in instances:
+		self.add_child(obj)
+		obj.owner = self
 	
 	return null
 
@@ -150,7 +152,7 @@ static func decompress_chunk(compressed_data: PackedByteArray) -> PackedByteArra
 			
 	return decompressed_data
 
-static func create_texture_from_terrain_data(terrain_data: PackedByteArray) -> ImageTexture:
+static func create_texture_from_terrain_data(terrain_data: PackedByteArray) -> Image:
 	var terrain_img: Image = Image.create_empty(Global.CHUNK_SIDE, Global.CHUNK_SIDE, false, Image.FORMAT_RGBA8)
 	
 	for i: int in range(terrain_data.size()):
@@ -174,7 +176,7 @@ static func create_texture_from_terrain_data(terrain_data: PackedByteArray) -> I
 				_tile_sprites[terrain_data[i]].get_pixelv(Vector2i((grid_img_coords)) % _tile_sprites[terrain_data[i]].get_size())
 			)
 	
-	return ImageTexture.create_from_image(terrain_img)
+	return terrain_img
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos: Vector2 = to_local(world_pos)
