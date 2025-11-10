@@ -125,24 +125,24 @@ func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
 	var shift := false
 	var click := false
 	var leave := false
-
+	
 	if event is InputEventMouseMotion:
 		update_overlays() 
-
+	
 	if event is InputEventMouseButton:
 		scroll_up = event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed
 		scroll_down = event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed
 		
 		leave = (event.button_index == MOUSE_BUTTON_RIGHT and event.pressed or
 				 event.button_index == MOUSE_BUTTON_MIDDLE and event.pressed)
-
+	
 	click = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	shift = Input.is_key_pressed(KEY_SHIFT)
-
+	
 	Editor.terraform(scroll_up, scroll_down, shift, click, mouse_pos, _chunks)
 	if scroll_up or scroll_down or click or (event is InputEventMouseMotion and click):
 		return true
-
+	
 	if leave:
 		return false
 	

@@ -23,6 +23,7 @@ Global="*res://scripts/Global.gd"
 
 gdscript/warnings/untyped_declaration=2
 gdscript/warnings/inferred_declaration=2
+gdscript/warnings/integer_division=0
 
 [display]
 

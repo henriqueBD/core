@@ -12,7 +12,7 @@ var chunk_unloaded: bool = false
 
 func _enter_tree() -> void:
 	if !Engine.is_editor_hint():
-		printerr("No editor objects allowed in game")
+		print("No editor objects allowed in game")
 		self.set_script(null)
 		queue_free()
 		return

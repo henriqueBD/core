@@ -21,7 +21,7 @@ enum TILE_TYPE { AIR, dirt, stone, gold, clovium }
 enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
 
 static func get_entities_map(entities_cord: Vector2i) -> String:
-	return "res://entities_map/%d-%d.res" % [entities_cord.x, entities_cord.y]
+	return "res://entities_map/%d-%d.dat" % [entities_cord.x, entities_cord.y]
 
 func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	self.set_process(false)
@@ -56,19 +56,14 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	self.texture = tex
 	
 	# Load entities
-	entities = obj_chunk.new()
-	var path: String = get_entities_map(self.coords)
-	if FileAccess.file_exists(path):
-		entities = ResourceLoader.load(path)
-		return entities
-	else:
-		return null
+	entities = obj_chunk.deserialize(c)
+	return entities
 
-func initialize_deffered(key: Vector2i, decompressed_data: PackedByteArray, image: Image, instances: Array[Node]) -> void:
+func initialize_deffered(key: Vector2i, decompressed_data: PackedByteArray, image: Image, instances: Array[Node2D]) -> void:
 	var sprite: ImageTexture = ImageTexture.create_from_image(image)
 	call_deferred("_initialize_deffered_helper", key, decompressed_data, image, sprite, instances)
 
-func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArray, image: Image, sprite: ImageTexture, instances: Array[Node]) -> obj_chunk:
+func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArray, image: Image, sprite: ImageTexture, instances: Array[Node2D]) -> obj_chunk:
 	self.set_process(false)
 	
 	self.coords = key
@@ -82,8 +77,12 @@ func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArr
 	self.tex = sprite
 	self.texture = sprite
 	
-	for obj: Node in instances:
+	for obj: Node2D in instances:
+		
+		##Fix later
+		#var b: Vector2 = obj.global_position
 		self.add_child(obj)
+		#obj.global_position = b
 		obj.owner = self
 	
 	return null
@@ -489,12 +488,7 @@ func unload() -> void:
 		_save_terrain()
 
 func _save_entities() -> void:
-	var file_path: String = get_entities_map(self.coords)
-	if len(entities.id) > 0:
-		ResourceSaver.save(entities, file_path)
-	else:
-		if FileAccess.file_exists(file_path):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(file_path))
+	obj_chunk.serialize_and_save(self.entities, self.coords)
 
 func _save_terrain() -> void:
 	var target_path: String = chunk_mng.get_chunk_path(coords)
@@ -552,9 +546,9 @@ func add_sprite(sprite: Sprite2D) -> void:
 		self.add_child(sprite)
 		sprite.owner = self
 
-func add_entity_backend(id: int, pos: Vector2) -> void:
+func add_entity_backend(id: int, global_pos: Vector2) -> void:
 	entities.id.append(id)
-	entities.pos.append(pos)
+	entities.pos.append(self.to_local(global_pos))
 	changed_entities = true
 
 func clear_entity_backend() -> void:

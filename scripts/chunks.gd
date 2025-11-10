@@ -17,12 +17,17 @@ var player: player_character
 @export var save_on_exit: bool
 
 var _chunks_dict: Dictionary[Vector2i, chunk_tile] = {}
+var _chunks_dict_mutex: Mutex = Mutex.new()
 var _chunks_buff_dict: Dictionary[Vector2i, bool]
 
-var _array_load_mutex: Mutex = Mutex.new()
+var _use_multithread: bool = false
 var _loader_continue: bool = true
 var _loader_thread: Thread
+
+var _array_load_mutex: Mutex = Mutex.new()
 var _chunk_load_queue: Array[Vector2i] = []
+var _array_unload_mutex: Mutex = Mutex.new()
+var _chunk_unload_queue: Array[Vector2i] = []
 
 var _last_center_chunk: Vector2i = Vector2i(-1, -1)
 var _curr_center_chunk: Vector2i
@@ -33,7 +38,7 @@ static var tile_durability: PackedByteArray
 
 static var obj_id_to_name: Dictionary[int, String] = {}
 
-#Debug only remove on release
+#Debug only remove on release !
 var should_mouse_break: bool = true
 
 var editor_stuff_active: bool = false
@@ -49,6 +54,7 @@ func _enter_tree() -> void:
 			var script: Script = load("res://scripts/objects_signal.gd")
 			if script: parent.set_script(script)
 	else:
+		_use_multithread = true
 		Global.chunks = self
 	
 	emptyChunkTemplate = FileAccess.get_file_as_bytes(emptyChunkPath)
@@ -61,11 +67,9 @@ func _enter_tree() -> void:
 	
 	chunk_tile._tile_sprites = tile_sprites
 	chunk_tile._chunks_loaded = _chunks_dict
-
-func _ready() -> void:
+	
 	_load_chunk(Vector2i(0,0))
-	_loader_thread = Thread.new()
-	_loader_thread.start(_loader_process)
+	if _use_multithread: _loader_start()
 
 func late_ready() -> void:
 	if !Engine.is_editor_hint():
@@ -94,13 +98,36 @@ func _process(_delta: float) -> void:
 	else:
 		load_nearby_chunks(player.global_position)
 
+#region Chunk loader
+
+func _loader_start() -> void:
+	if _loader_thread and _loader_thread.is_alive():
+		_loader_continue = false
+		_reset_queues()
+		_loader_thread.wait_to_finish()
+	_reset_queues()
+	_loader_thread = Thread.new()
+	_loader_continue = true
+	_loader_thread.start(_loader_process)
+
+func _reset_queues() -> void:
+	_array_load_mutex.lock()
+	_chunk_load_queue = []
+	_array_load_mutex.unlock()
+	_array_unload_mutex.lock()
+	_chunk_unload_queue = []
+	_array_unload_mutex.unlock()
+
+# Multithreaded chunk loading and unloading:
 func _loader_process() -> void:
 	while _loader_continue:
+		
+		# Load chunks
 		if !_chunk_load_queue.is_empty():
 			_array_load_mutex.lock()
 			var chunk_to_load_coords: Vector2i = _chunk_load_queue.pop_front()
-			print("loading from thread " + str(chunk_to_load_coords))
 			_array_load_mutex.unlock()
+			print("loading from thread " + str(chunk_to_load_coords))
 			
 			var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
 			
@@ -110,19 +137,44 @@ func _loader_process() -> void:
 			
 			var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
 			
-			var instances: Array[Node] = []
-			var path: String = chunk_tile.get_entities_map(chunk_to_load_coords)
+			var instances: Array[Node2D] = []
+			var entities: obj_chunk = obj_chunk.deserialize(chunk_to_load_coords)
 			
-			if FileAccess.file_exists(path):
-				var entities: obj_chunk = ResourceLoader.load(path, "obj_chunk")
+			if !entities.id.is_empty():
+				print("Loading entities")
 				if entities:
 					if Engine.is_editor_hint():
-						add_objects_editor(entities)
+						add_objects_editor(new_chunk_instance, entities)
 					else:
 						instances = _get_objects(entities)
+				else:
+					printerr("Failed to get entities at chunk " + str(chunk_to_load_coords))
 			
 			call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
 			new_chunk_instance.initialize_deffered(chunk_to_load_coords, terrain_data, terrain_image, instances)
+		
+		#Unload chunks
+		if !_chunk_unload_queue.is_empty():
+			_array_unload_mutex.lock()
+			var chunk_to_unload_coords: Vector2i = _chunk_unload_queue.pop_front()
+			_array_unload_mutex.unlock()
+			print("unloading from thread " + str(chunk_to_unload_coords))
+			if !_chunks_dict.has(chunk_to_unload_coords): continue
+			var chunk_to_remove: chunk_tile = _chunks_dict[chunk_to_unload_coords]
+			
+			if !save_on_exit:
+				chunk_to_remove._terrain_really_changed = false
+				chunk_to_remove.changed_terrain = false
+				chunk_to_remove.changed_entities = false
+			
+			chunk_to_remove.unload()
+			chunk_to_remove.queue_free()
+			
+			_chunks_dict_mutex.lock()
+			_chunks_dict.erase(chunk_to_unload_coords)
+			_chunks_dict_mutex.unlock()
+
+#endregion
 
 func _loader_end() -> void:
 	_loader_continue = false
@@ -287,10 +339,12 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 			if is_chunk_in_bounds(chunk_to_check):
 				_chunks_buff_dict[chunk_to_check] = true
 				if not _chunks_dict.has(chunk_to_check):
-					#_load_chunk(chunk_to_check)
-					_array_load_mutex.lock()
-					_chunk_load_queue.append(chunk_to_check)
-					_array_load_mutex.unlock()
+					if _use_multithread:
+						_array_load_mutex.lock()
+						_chunk_load_queue.append(chunk_to_check)
+						_array_load_mutex.unlock()
+					else:
+						_load_chunk(chunk_to_check)
 					if Engine.is_editor_hint(): 
 						editor_msg += "({x}, {y}) ".format({"x": chunk_to_check.x, "y": chunk_to_check.y})
 	
@@ -304,7 +358,12 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 		if not _chunks_buff_dict.has(key):
 			to_remove.append(key)
 	for key: Vector2i in to_remove:
-		_unload_chunk(key)
+		if _use_multithread:
+			_array_unload_mutex.lock()
+			_chunk_unload_queue.append(key)
+			_array_unload_mutex.unlock()
+		else:
+			_unload_chunk(key)
 		if Engine.is_editor_hint(): 
 			editor_msg += "({x}, {y}) ".format({"x": key.x, "y": key.y})
 	
@@ -325,30 +384,21 @@ func _load_chunk(load_coords: Vector2i) -> void:
 	var newChunk: chunk_tile = chunk_scene.instantiate()
 	var entities: obj_chunk = newChunk.initialize(load_coords)
 	
-	newChunk.fix_borders()
-	
-	var coord_tmp: Vector2i = load_coords + Vector2i.UP
-	if _chunks_dict.has(coord_tmp): _chunks_dict[coord_tmp].fix_borders()
-	coord_tmp = load_coords + Vector2i.DOWN
-	if _chunks_dict.has(coord_tmp): _chunks_dict[coord_tmp].fix_borders()
-	coord_tmp = load_coords + Vector2i.LEFT
-	if _chunks_dict.has(coord_tmp): _chunks_dict[coord_tmp].fix_borders()
-	coord_tmp = load_coords + Vector2i.RIGHT
-	if _chunks_dict.has(coord_tmp): _chunks_dict[coord_tmp].fix_borders()
-	
 	_instantiate_chunk(newChunk, load_coords)
 	
-	if entities == null: return
+	if entities.id.is_empty(): return
 	
 	if Engine.is_editor_hint():
-		add_objects_editor(entities)
+		add_objects_editor(newChunk, entities)
 	else:
 		add_objects(newChunk, entities)
 
 func _instantiate_chunk(new_chunk: chunk_tile, new_chunk_coords: Vector2i) -> void:
 	add_child(new_chunk)
 	new_chunk.owner = self
+	_chunks_dict_mutex.lock()
 	_chunks_dict[new_chunk_coords] = new_chunk
+	_chunks_dict_mutex.unlock()
 
 func _unload_chunk(unloadCoords: Vector2i) -> void:
 	if !_chunks_dict.has(unloadCoords): return
@@ -360,10 +410,12 @@ func _unload_chunk(unloadCoords: Vector2i) -> void:
 		chunk_to_remove.changed_entities = false
 	
 	chunk_to_remove.unload()
+	_chunks_dict_mutex.lock()
 	_chunks_dict.erase(unloadCoords)
+	_chunks_dict_mutex.unlock()
 	chunk_to_remove.queue_free()
 
-func add_objects_editor(entities: obj_chunk) -> void:
+func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void:
 	var main_node: Node = self.get_parent()
 	if !main_node: return
 	
@@ -376,7 +428,8 @@ func add_objects_editor(entities: obj_chunk) -> void:
 		var instance_scene: PackedScene = load(path)
 		var instance: Node2D = instance_scene.instantiate()
 		#instance.global_position = entities.pos[i]
-		instance.set_meta("original_pos", entities.pos[i])
+		var instance_global_pos: Vector2 = original_chunk.to_global(entities.pos[i])
+		instance.set_meta("original_pos", instance_global_pos)
 		main_node.add_child(instance)
 		instance.owner = main_node
 
@@ -395,21 +448,22 @@ func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 		chunk_to_add.editor_add_entity(obj, objs.id[i])
 	chunk_to_add.changed_entities = false
 
-func _get_objects(objs: obj_chunk) -> Array[Node]:
-	var instances: Array[Node] = []
+func _get_objects(objs: obj_chunk) -> Array[Node2D]:
+	var instances: Array[Node2D] = []
 	
 	for i: int in range(len(objs.id)):
 		var obj_name: String = obj_id_to_name[objs.id[i]]
-		var path: String = "res://entities/%s/%s.tscn" % [obj_name, obj_name]
-		
+		var path: String = "%s%s/%s.tscn" % [Global.objs_path, obj_name, obj_name]
 		if !FileAccess.file_exists(path):
-			printerr("could not find file at " + path)
+			printerr("Did not find path at " + path)
 			continue
-		
-		var tmp: PackedScene = load(path)
-		var obj: Area2D = tmp.instantiate()
-		obj.global_position = objs.pos[i]
-		instances.append(obj)
+		else:
+			print("Loading " + path)
+		var instance_scene: PackedScene = load(path)
+		var instance: Node2D = instance_scene.instantiate()
+		print(instance)
+		instance.global_position = objs.pos[i]
+		instances.append(instance)
 	
 	return instances
 
@@ -430,7 +484,9 @@ func create_empty_chunk(new_chunk_pos: Vector2i) -> void:
 	newChunk.initialize(new_chunk_pos, emptyChunkTemplate)
 	newChunk._save_terrain()
 	add_child(newChunk)
+	_chunks_dict_mutex.lock()
 	_chunks_dict[new_chunk_pos] = newChunk
+	_chunks_dict_mutex.unlock()
 
 func add_object_viewport(world_pos: Vector2, obj_id: int) -> void:
 	if !Engine.is_editor_hint(): return
