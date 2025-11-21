@@ -1,11 +1,9 @@
-[gd_scene load_steps=7 format=3 uid="uid://p22pqxsrvqus"]
+[gd_scene load_steps=5 format=3 uid="uid://p22pqxsrvqus"]
 
 [ext_resource type="Script" uid="uid://b3bg4gilb8xkb" path="res://scripts/objects_signal.gd" id="1_lbhrr"]
 [ext_resource type="Script" uid="uid://cqnx0060bfqfg" path="res://scripts/camera_follow.gd" id="1_lnu2h"]
 [ext_resource type="PackedScene" uid="uid://c53auncdmtksg" path="res://scenes/chunk.tscn" id="2_yqjtg"]
 [ext_resource type="PackedScene" uid="uid://bpytpor8ff704" path="res://scenes/player.tscn" id="3_lnu2h"]
-[ext_resource type="PackedScene" uid="uid://mqwh6xku2waw" path="res://entities/falling_spike_small/falling_spike_small.tscn" id="5_p57ef"]
-[ext_resource type="Script" uid="uid://176l8id71dct" path="res://scripts/object_tracking.gd" id="6_u5sy4"]
 
 [node name="Game" type="Node2D"]
 script = ExtResource("1_lbhrr")
@@ -30,10 +28,3 @@ _boost_break_time_ms = 350
 _tunelling_speed = 200.0
 _turning_speed_tunneling = 4.5
 _exit_speed = 3.0
-
-[node name="FallingSpikeSmall" type="Area2D" parent="." instance=ExtResource("5_p57ef")]
-position = Vector2(415, 651)
-script = ExtResource("6_u5sy4")
-metadata/original_pos = Vector2(415, 651)
-
-[connection signal="area_entered" from="FallingSpikeSmall" to="FallingSpikeSmall" method="_on_area_entered"]

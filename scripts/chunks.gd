@@ -38,9 +38,6 @@ static var tile_durability: PackedByteArray
 
 static var obj_id_to_name: Dictionary[int, String] = {}
 
-#Debug only remove on release !
-var should_mouse_break: bool = true
-
 var editor_stuff_active: bool = false
 
 func _enter_tree() -> void:
@@ -75,21 +72,8 @@ func late_ready() -> void:
 	if !Engine.is_editor_hint():
 		player = Global.player_node
 	
-	#emptyChunkTemplate = FileAccess.get_file_as_bytes(emptyChunkPath)
-	#assert(len(emptyChunkTemplate) > 0)
-	#for i: int in range(1, len(tile_sprites)):
-		#assert(tile_sprites[i] != null)
-	
-	#chunk_tile._tile_sprites = tile_sprites
-	#chunk_tile._chunks_loaded = _chunks_dict
-	
 	if obj_id_to_name.is_empty():
 		_load_obj_list()
-	
-	#_load_chunk(Vector2i(0,0))
-	#
-	#_loader_thread = Thread.new()
-	#_loader_thread.start(_loader_process)
 
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
@@ -112,10 +96,11 @@ func _loader_start() -> void:
 
 func _reset_queues() -> void:
 	_array_load_mutex.lock()
-	_chunk_load_queue = []
+	_chunk_load_queue.clear()
 	_array_load_mutex.unlock()
+	
 	_array_unload_mutex.lock()
-	_chunk_unload_queue = []
+	_chunk_unload_queue.clear()
 	_array_unload_mutex.unlock()
 
 # Multithreaded chunk loading and unloading:
@@ -132,7 +117,6 @@ func _loader_process() -> void:
 			var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
 			
 			var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
-			
 			assert(terrain_data.size() == chunk_tile.EXPECTED_DATA_SIZE)
 			
 			var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
@@ -162,7 +146,7 @@ func _loader_process() -> void:
 			if !_chunks_dict.has(chunk_to_unload_coords): continue
 			var chunk_to_remove: chunk_tile = _chunks_dict[chunk_to_unload_coords]
 			
-			if !save_on_exit:
+			if !save_on_exit or Engine.is_editor_hint():
 				chunk_to_remove._terrain_really_changed = false
 				chunk_to_remove.changed_terrain = false
 				chunk_to_remove.changed_entities = false
@@ -404,7 +388,7 @@ func _unload_chunk(unloadCoords: Vector2i) -> void:
 	if !_chunks_dict.has(unloadCoords): return
 	var chunk_to_remove: chunk_tile = _chunks_dict[unloadCoords]
 	
-	if !save_on_exit:
+	if !save_on_exit or Engine.is_editor_hint():
 		chunk_to_remove._terrain_really_changed = false
 		chunk_to_remove.changed_terrain = false
 		chunk_to_remove.changed_entities = false

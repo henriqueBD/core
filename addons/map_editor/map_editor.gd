@@ -1,8 +1,6 @@
 @tool
 extends EditorPlugin
 
-const ver = "1.8"
-
 const TARGET_SCENE_PATH: String = "Game"
 
 var _chunks: chunk_mng
@@ -16,7 +14,7 @@ enum EDITOR_STATE {
 	unreachable,
 	place_obj,
 	terraform,
-	add_chunk,
+	select_chunk,
 }
 
 var _curr_state: EDITOR_STATE = EDITOR_STATE.terraform
@@ -29,6 +27,7 @@ var _same_scene: bool = true
 var _same_workplace: bool = true
 
 var _curr_chunk_selected: Vector2i
+var _chunks_selected: Array[Vector2i]
 
 # -============================(v)================================- #
 ## Utilize o dict chunk_mng.obj_id_to_name[id: int] para (id -> nome)
@@ -69,7 +68,6 @@ func _enter_tree():
 	
 	self.main_screen_changed.connect(_on_work_place_changed)
 	self.scene_changed.connect(_on_scene_changed)
-	print("Ver: " + str(ver))
 
 func _process(delta: float) -> void:
 	_timer += delta
@@ -78,7 +76,7 @@ func _process(delta: float) -> void:
 	if Input.is_key_label_pressed(KEY_1):
 		_change_state(EDITOR_STATE.terraform)
 	elif Input.is_key_label_pressed(KEY_2):
-		_change_state(EDITOR_STATE.add_chunk)
+		_change_state(EDITOR_STATE.select_chunk)
 	elif Input.is_key_label_pressed(KEY_0):
 		_change_state(EDITOR_STATE.unreachable)
 	
@@ -87,6 +85,10 @@ func _process(delta: float) -> void:
 	_timer = 0.0
 	
 	var curspor_pos := EditorInterface.get_editor_viewport_2d().get_mouse_position()
+	
+	#var viewport_transform := EditorInterface.get_editor_viewport_2d().global_canvas_transform
+	#print(viewport_transform.origin * viewport_transform.x.x)
+	
 	_chunks.load_nearby_chunks(curspor_pos)
 
 func _handles(object: Object) -> bool:
@@ -96,10 +98,8 @@ func _handles(object: Object) -> bool:
 func _change_state(new_state: EDITOR_STATE) -> void:
 	if _curr_state == new_state: return
 	print(EDITOR_STATE.keys()[int(new_state)])
-	match new_state:
-		EDITOR_STATE.place_obj:
-			_place_obj_enter()
-	
+	if new_state == EDITOR_STATE.select_chunk:
+		_chunks_selected.clear()
 	_curr_state = new_state
 
 #region state update
@@ -108,14 +108,11 @@ func _forward_canvas_gui_input(event: InputEvent) -> bool:
 	var mouse_pos: Vector2 = EditorInterface.get_editor_viewport_2d().get_mouse_position()
 	
 	match _curr_state:
-		EDITOR_STATE.place_obj:
-			update_overlays()
-			return _place_obj(event, mouse_pos)
 		EDITOR_STATE.terraform:
 			update_overlays()
 			return _terraform(event, mouse_pos)
-		EDITOR_STATE.add_chunk:
-			return _add_chunk(event, mouse_pos)
+		EDITOR_STATE.select_chunk:
+			return _select_chunk(event, mouse_pos)
 	
 	return false
 
@@ -124,77 +121,95 @@ func _terraform(event: InputEvent, mouse_pos: Vector2) -> bool:
 	var scroll_down := false
 	var shift := false
 	var click := false
-	var leave := false
 	
 	if event is InputEventMouseMotion:
 		update_overlays() 
 	
 	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			_change_state(EDITOR_STATE.unreachable)
 		scroll_up = event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed
 		scroll_down = event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed
-		
-		leave = (event.button_index == MOUSE_BUTTON_RIGHT and event.pressed or
-				 event.button_index == MOUSE_BUTTON_MIDDLE and event.pressed)
 	
 	click = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	shift = Input.is_key_pressed(KEY_SHIFT)
 	
 	Editor.terraform(scroll_up, scroll_down, shift, click, mouse_pos, _chunks)
-	if scroll_up or scroll_down or click or (event is InputEventMouseMotion and click):
-		return true
 	
-	if leave:
-		return false
-	
-	return false
+	return true
 
-func _place_obj_enter() -> void:
-	_change_selected_obj(_obj_names[clamp(_curr_obj_index, 0, len(_obj_names)-1)])
-
-func _place_obj(event: InputEvent, mouse_pos: Vector2) -> bool:
-	var leave: bool = false
-	
-	if event is InputEventKey:
-		if event.keycode == KEY_P and event.pressed:
-			_curr_obj_index = (_curr_obj_index + 1) % len(_obj_names)
-			_change_selected_obj(_obj_names[_curr_obj_index])
-	
-	if event is InputEventMouseButton:
-		leave = event.button_index == MOUSE_BUTTON_RIGHT and event.pressed
-		
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			_chunks.add_object_viewport(floor(mouse_pos), _obj_ids[_curr_obj_index])
-	
-	return !leave
-
-## Importante
-func _change_selected_obj(obj_name: String) -> void:
-	var img_tmp: Image = Image.new()
-	var path := Global.objs_path + obj_name + "/" + obj_name + "_preview.png"
-	var error := img_tmp.load(path)
-	if error != OK:
-		push_error("Failed to load image at path: %s" % path)
-		return
-	_curr_obj_preview = ImageTexture.create_from_image(img_tmp)
-	_curr_obj_index = _obj_id_to_index[chunk_mng.hash_string(obj_name)]
-
-func _add_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			_change_state(EDITOR_STATE.unreachable)
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			if Input.is_key_label_pressed(KEY_SHIFT):
-				delete_chunk()
-			else:
-				create_new_chunk()
-	
+func _select_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
 	if event is InputEventMouseMotion:
 		var new_chunk: Vector2i = chunk_mng.world_to_chunk_key(mouse_pos)
 		if new_chunk != _curr_chunk_selected:
 			_curr_chunk_selected = new_chunk
 			update_overlays()
 	
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			_change_state(EDITOR_STATE.unreachable)
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			if Input.is_key_label_pressed(KEY_CTRL):
+				delete_chunk()
+			elif Input.is_key_label_pressed(KEY_SHIFT):
+				create_new_chunk()
+			else:
+				if _chunks_selected.has(_curr_chunk_selected): _chunks_selected.erase(_curr_chunk_selected)
+				else: _chunks_selected.append(_curr_chunk_selected)
+		update_overlays()
+	
+	# Save chunk area as image
+	if event is InputEventKey:
+		if event.keycode == KEY_S and event.pressed and _chunks_selected.size() == 2:
+			
+			const max_lenght: int = 10
+			
+			var min_chunk: Vector2i
+			var max_chunk: Vector2i
+			if (_chunks_selected[0].x < _chunks_selected[1].x or 
+			(_chunks_selected[0].x == _chunks_selected[1].x and 
+			_chunks_selected[0].y < _chunks_selected[1].y)):
+				min_chunk = _chunks_selected[0]
+				max_chunk = _chunks_selected[1]
+			else:
+				min_chunk = _chunks_selected[1]
+				max_chunk = _chunks_selected[0]
+			
+			var W: int = max_chunk.x - min_chunk.x
+			var H: int = max_chunk.y - min_chunk.y
+			
+			if W > max_lenght or H > max_lenght:
+				printerr("Image is too big")
+				return true
+			
+			var img: Image = Image.create_empty(W * Globals.CHUNK_SIDE, H * Globals.CHUNK_SIDE, false, Image.FORMAT_RGB8)
+			
+			for x: int in range(min_chunk.x, max_chunk.x + 1):
+				for y: int in range(min_chunk.y, max_chunk.y + 1):
+					var curr_chunk: Vector2i = Vector2i(x, y)
+					var offset_pixels: Vector2i = (curr_chunk - min_chunk) * Globals.CHUNK_SIDE
+					var chunk_image: Image = get_chunk_image(curr_chunk)
+					img.blit_rect(chunk_image, Rect2i(Vector2i(0,0), chunk_image.get_size()), offset_pixels)
+			
+			print("Area saved")
+			img.save_png("res://terrain_buffer/" + str(_chunks_selected[0]) + ".png")
+	
 	return true
+
+func get_chunk_image(coords: Vector2i) -> Image:
+	if _chunks._chunks_dict.has(coords):
+		return _chunks._chunks_dict[coords].get_terrain_image()
+	
+	if FileAccess.file_exists(chunk_mng.get_chunk_path(coords)):
+		var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(coords))
+		if terrain_data.size() == chunk_tile.EXPECTED_DATA_SIZE:
+			return chunk_tile.get_terrain_image_static(terrain_data)
+		else:
+			printerr("Failed to decompress chunk in map_editor" + str(coords))
+	
+	var image_empty: Image = Image.create_empty(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE, false, Image.FORMAT_RGB8)
+	image_empty.fill(Color.BLACK)
+	return image_empty
 
 func create_new_chunk() -> void:
 	if FileAccess.file_exists(chunk_mng.get_chunk_path(_curr_chunk_selected)): return
@@ -224,12 +239,10 @@ func delete_chunk() -> void:
 
 func _forward_canvas_draw_over_viewport(viewport_control: Control) -> void:
 	match _curr_state:
-		EDITOR_STATE.place_obj:
-			_place_obj_draw(viewport_control)
 		EDITOR_STATE.terraform:
 			_terraform_draw(viewport_control)
-		EDITOR_STATE.add_chunk:
-			_add_chunk_draw(viewport_control)
+		EDITOR_STATE.select_chunk:
+			_select_chunk_draw(viewport_control)
 
 func _terraform_draw(viewport_control: Control) -> void:
 	var zoom: float = _get_editor_zoom_ammount()
@@ -238,20 +251,22 @@ func _terraform_draw(viewport_control: Control) -> void:
 	rect_draw.position -= rect_draw.size / 2
 	viewport_control.draw_rect(rect_draw, Color.from_rgba8(255, 0, 255, 100))
 
-# Improvements: change the filtering to remove blurring, snap the position to pixels
-func _place_obj_draw(viewport_control: Control) -> void:
-	var zoom: float = _get_editor_zoom_ammount()
-	if _curr_obj_preview:
-		var texture_size: Vector2 = _curr_obj_preview.get_size() * zoom
-		var draw_pos: Vector2 = viewport_control.get_local_mouse_position() - texture_size * 0.5
-		var rect := Rect2(draw_pos, texture_size)
-		viewport_control.draw_texture_rect(_curr_obj_preview, rect, false)
-
-func _add_chunk_draw(viewport_control: Control) -> void:
-	var chunk_top_left: Vector2 = _curr_chunk_selected * Global.CHUNK_SIDE
+func _select_chunk_draw(viewport_control: Control) -> void:
 	var camera: Transform2D = EditorInterface.get_editor_viewport_2d().global_canvas_transform
+	var zoom_ammount: float = _get_editor_zoom_ammount()
+	
+	for highlight: Vector2i in _chunks_selected:
+		var chunk_top_left: Vector2 = highlight * Global.CHUNK_SIDE
+		var screen_pos: Vector2 = camera * chunk_top_left
+		var chunk_side_scaled: Vector2 = Vector2(Global.CHUNK_SIDE, Global.CHUNK_SIDE) * zoom_ammount
+		viewport_control.draw_rect(
+			Rect2(screen_pos, chunk_side_scaled),
+			 Color(0.0, 0.84, 0.215, 0.5) if _chunks._chunks_dict.has(highlight) else Color(0.704, 0.001, 0.798, 0.5)
+		)
+	
+	var chunk_top_left: Vector2 = _curr_chunk_selected * Global.CHUNK_SIDE
 	var screen_pos: Vector2 = camera * chunk_top_left
-	var chunk_side_scaled: Vector2 = Vector2(Global.CHUNK_SIDE, Global.CHUNK_SIDE) * _get_editor_zoom_ammount()
+	var chunk_side_scaled: Vector2 = Vector2(Global.CHUNK_SIDE, Global.CHUNK_SIDE) * zoom_ammount
 	viewport_control.draw_rect(
 		Rect2(screen_pos, chunk_side_scaled),
 		 Color(0, 0, 1, 0.5) if _chunks._chunks_dict.has(_curr_chunk_selected) else Color(1, 0, 0, 0.5)

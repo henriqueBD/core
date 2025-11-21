@@ -262,6 +262,20 @@ func _recalculate_area(recalculate_rect: Rect2) -> void:
 			if !_has_same_neighbors(x_pos, y_pos):
 				img.set_pixel(x_pos, y_pos, chunk_mng.tile_edge_colors[_get_tile(x_pos, y_pos)])
 
+func get_terrain_image() -> Image:
+	var image_res: Image = Image.create_empty(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE, false, Image.FORMAT_RGB8)
+	for x: int in range(Globals.CHUNK_SIDE):
+		for y: int in range(Globals.CHUNK_SIDE):
+			image_res.set_pixel(x, y, chunk_mng.tile_edge_colors[_get_tile(x, y)])
+	return image_res
+
+static func get_terrain_image_static(terrain_data: PackedByteArray) -> Image:
+	var image_res: Image = Image.create_empty(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE, false, Image.FORMAT_RGB8)
+	for x: int in range(Globals.CHUNK_SIDE):
+		for y: int in range(Globals.CHUNK_SIDE):
+			image_res.set_pixel(x, y, chunk_mng.tile_edge_colors[terrain_data[y * Global.CHUNK_SIDE + x]])
+	return image_res
+
 func change_tiles(destroy_rect_world: Rect2, new_type: TILE_TYPE) -> void:
 	_terrain_really_changed = false
 	
