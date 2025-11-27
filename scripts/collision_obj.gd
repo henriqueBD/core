@@ -81,7 +81,9 @@ func move(velocity: Vector2) -> void:
 	_parent.position += velocity
 
 func teleport(new_pos: Vector2) -> void:
-	_global_bounds.position = new_pos
+	var offset: Vector2 = new_pos - _global_bounds.position
+	_global_bounds.position += offset
+	_parent.global_position += offset
 
 func change_rect(new_rect: Rect2) -> void:
 	_global_bounds.size = round(new_rect.size)

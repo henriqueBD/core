@@ -29,11 +29,7 @@ var _same_workplace: bool = true
 var _curr_chunk_selected: Vector2i
 var _chunks_selected: Array[Vector2i]
 
-# -============================(v)================================- #
-## Utilize o dict chunk_mng.obj_id_to_name[id: int] para (id -> nome)
-## Utilize chunk_mng.hash_string(nome: String) para (nome -> id)
-## _obj_names e _obj_ids devem ser acessados apenas pelo _curr_obj_index
-# -============================(^)================================- #
+var _color_to_tile_ID: Dictionary[Color, int]
 
 var _curr_obj_index: int
 var _obj_names: Array[String]
@@ -63,9 +59,6 @@ func _enter_tree():
 				_chunks.late_ready()
 				_should_update = true
 	
-	if !chunk_mng.obj_id_to_name.is_empty():
-		_load_obj_list()
-	
 	self.main_screen_changed.connect(_on_work_place_changed)
 	self.scene_changed.connect(_on_scene_changed)
 
@@ -89,6 +82,8 @@ func _process(delta: float) -> void:
 	#var viewport_transform := EditorInterface.get_editor_viewport_2d().global_canvas_transform
 	#print(viewport_transform.origin * viewport_transform.x.x)
 	
+	if _chunks._chunks_load_radius != _chunks._chunks_load_radius_editor:
+		_chunks._chunks_load_radius = _chunks._chunks_load_radius_editor
 	_chunks.load_nearby_chunks(curspor_pos)
 
 func _handles(object: Object) -> bool:
@@ -158,8 +153,8 @@ func _select_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
 				else: _chunks_selected.append(_curr_chunk_selected)
 		update_overlays()
 	
-	# Save chunk area as image
 	if event is InputEventKey:
+		# Save chunk area as image
 		if event.keycode == KEY_S and event.pressed and _chunks_selected.size() == 2:
 			
 			const max_lenght: int = 10
@@ -175,8 +170,8 @@ func _select_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
 				min_chunk = _chunks_selected[1]
 				max_chunk = _chunks_selected[0]
 			
-			var W: int = max_chunk.x - min_chunk.x
-			var H: int = max_chunk.y - min_chunk.y
+			var W: int = (max_chunk.x - min_chunk.x) + 1
+			var H: int = (max_chunk.y - min_chunk.y) + 1
 			
 			if W > max_lenght or H > max_lenght:
 				printerr("Image is too big")
@@ -191,10 +186,99 @@ func _select_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
 					var chunk_image: Image = get_chunk_image(curr_chunk)
 					img.blit_rect(chunk_image, Rect2i(Vector2i(0,0), chunk_image.get_size()), offset_pixels)
 			
+			var name := "%d_%d-%d_%d" % [min_chunk.x, min_chunk.y, max_chunk.x, max_chunk.y]
+			img.save_png("C:/Users/Henrique/Desktop/buffer" + "/" + name + ".png")
 			print("Area saved")
-			img.save_png("res://terrain_buffer/" + str(_chunks_selected[0]) + ".png")
+		
+		#load chunks from image
+		elif event.keycode == KEY_L and event.pressed:
+			var path_tarrain := "C:/Users/Henrique/Desktop/buffer"
+			var dir: DirAccess = DirAccess.open(path_tarrain)
+			if DirAccess.get_open_error():
+				print("Error")
+				return true
+			
+			for file_name: String in dir.get_files():
+				if !file_name.ends_with(".png"): continue
+				print("Loading chunks from image")
+				decode_and_load_chunks_from_image(file_name)
 	
 	return true
+
+func decode_and_load_chunks_from_image(file_name: String) -> void:
+	
+	_color_to_tile_ID = {}
+	_color_to_tile_ID[Color.BLACK] = 0
+	for i: int in range(len(chunk_mng.tile_edge_colors)):
+		_color_to_tile_ID[chunk_mng.tile_edge_colors[i]] = i
+	
+	var path_tarrain := "C:/Users/Henrique/Desktop/buffer"
+	var image: Image = Image.load_from_file(path_tarrain + "/" + file_name)
+	file_name.trim_suffix(".png")
+	
+	var parts := file_name.split("-")
+	var v1_parts := parts[0].split("_")
+	var v2_parts := parts[1].split("_")
+	
+	var min_chunk := Vector2i(int(v1_parts[0]), int(v1_parts[1]))
+	var max_chunk := Vector2i(int(v2_parts[0]), int(v2_parts[1]))
+	
+	var chunks_to_reload: Array[Vector2i] = []
+	
+	for x: int in range(min_chunk.x, max_chunk.x + 1):
+		for y: int in range(min_chunk.y, max_chunk.y + 1):
+			var curr_chunk: Vector2i = Vector2i(x, y)
+			var offset_pixels: Vector2i = (curr_chunk - min_chunk) * Globals.CHUNK_SIDE
+			var chunk_rect: Image = image.get_region(
+				Rect2i((curr_chunk - min_chunk) * Globals.CHUNK_SIDE, 
+				Vector2i(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE))
+			)
+			encode_single_chunk(chunk_rect, curr_chunk)
+			chunks_to_reload.append(curr_chunk)
+	
+	_chunks._curr_center_chunk = Vector2i(0,0)
+	
+	for reload: Vector2i in chunks_to_reload:
+		if !_chunks._chunks_dict.has(reload): continue
+		var reload_instance := _chunks._chunks_dict[reload]
+		var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(reload))
+		assert(terrain_data.size() == chunk_tile.EXPECTED_DATA_SIZE)
+		var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
+		reload_instance.data = terrain_data
+		reload_instance.img = terrain_image
+		var sprite := ImageTexture.create_from_image(terrain_image)
+		reload_instance.tex = sprite
+		reload_instance.texture = sprite
+
+func encode_single_chunk(chunk_image: Image, coords: Vector2i) -> void:
+	if chunk_image.get_size() != Vector2i(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE):
+		printerr("Error in encode_single_chunk for " + str(coords))
+		return
+	
+	var data: PackedByteArray = []
+	data.resize(Globals.CHUNK_SIZE)
+	
+	for x: int in range(Global.CHUNK_SIDE):
+		for y: int in range(Global.CHUNK_SIDE):
+			var tile_id := _color_to_tile_ID.get(chunk_image.get_pixel(x, y), -1)
+			if tile_id == -1:
+				printerr("Invalid tile at chunk " + str(coords) + str(Vector2(x, y)))
+				return
+			data[y * Global.CHUNK_SIDE + x] = tile_id
+	
+	var target_path: String = chunk_mng.get_chunk_path(coords)
+	var file_to_save: FileAccess = FileAccess.open(target_path, FileAccess.WRITE)
+	if file_to_save:
+		print("Saving")
+		var compressed_data: PackedByteArray = chunk_tile.compress_chunk(data)
+		var data_len: int = compressed_data.size()
+		var data_len_buffer: PackedByteArray = [0,0]
+		data_len_buffer[0] = data_len & 0xFF
+		data_len_buffer[1] = (data_len >> 8) & 0xFF
+		file_to_save.store_buffer(data_len_buffer)
+		file_to_save.store_buffer(compressed_data)
+	else:
+		print("Probem trying to save chunk " + str(coords))
 
 func get_chunk_image(coords: Vector2i) -> Image:
 	if _chunks._chunks_dict.has(coords):
@@ -287,7 +371,6 @@ func _on_work_place_changed(screen_name: String) -> void:
 			var curr_scene := EditorInterface.get_edited_scene_root()
 			_chunks = curr_scene.get_node_or_null("Chunk")
 			_chunks.late_ready()
-			_load_obj_list()
 	
 	_check_if_should_update()
 
@@ -310,7 +393,6 @@ func _on_scene_changed(scene_root: Node) -> void:
 			var curr_scene := EditorInterface.get_edited_scene_root()
 			_chunks = curr_scene.get_node_or_null("Chunk")
 			_chunks.late_ready()
-			_load_obj_list()
 	_check_if_should_update()
 
 func _check_if_should_update() -> void:
@@ -334,16 +416,6 @@ func _on_material_selected(info) -> void:
 		print("Editor tile set to: '%s' (index %d)" % [tile_name, tile_index])
 	else:
 		push_error("Selected material '%s' does not exist in chunk_tile.TILE_TYPE!" % tile_name)
-
-func _load_obj_list() -> void:
-	if chunk_mng.obj_id_to_name.is_empty():
-		printerr("obj list is empty")
-		return
-	_obj_id_to_index = {}
-	_obj_ids = chunk_mng.obj_id_to_name.keys()
-	for i: int in range(len(_obj_ids)):
-		_obj_names.append(chunk_mng.obj_id_to_name[_obj_ids[i]])
-		_obj_id_to_index[_obj_ids[i]] = i
 
 func unload_stuff() -> void:
 	if not _chunks: return

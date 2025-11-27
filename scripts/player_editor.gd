@@ -17,8 +17,6 @@ static var is_active: bool = false
 
 const num_tiles: int = 5
 
-static var F_U: Area2D
-
 static var curr_obj_index: int = 0
 static var curr_obj: PackedScene
 static var curr_obj_instance: Node2D
@@ -37,8 +35,6 @@ func _ready() -> void:
 		print("level editor only on engine")
 		curr_update = EDITOR_STATE.unreachable
 		return
-	F_U = load("res://entities/f_u.tscn").instantiate()
-	add_child(F_U)
 	
 	populate_obj_arrays()
 	
@@ -54,7 +50,7 @@ static func populate_obj_arrays() -> void:
 		if dir.current_is_dir():
 			obj_name_list.append(file_name)
 			#var hash_id: int = hash(file_name)
-			var hash_id: int = chunk_mng.hash_string(file_name)
+			var hash_id: int = Entity_loader.hash_string(file_name)
 			obj_name_hash.append(hash_id)
 			id_to_name_tmp[hash_id] = file_name
 		file_name = dir.get_next()
@@ -84,7 +80,6 @@ func update() -> void:
 	elif Input.is_action_just_pressed("editor_terraform"):
 		change_state(EDITOR_STATE.terraform)
 	
-	F_U.global_position = cursor_position
 	_move()
 	match curr_update:
 		EDITOR_STATE.place_obj:
@@ -153,13 +148,12 @@ func delete_object() -> void:
 		change_state(EDITOR_STATE.place_obj)
 		return
 	if Input.is_action_just_pressed("place_object"):
-		chunk.delete_objects_chunk(F_U)
+		pass
 
 func move_object() -> void:
 	if !Input.is_key_pressed(KEY_SHIFT):
 		change_state(EDITOR_STATE.place_obj)
 		return
-
 
 ## TERRAFORM
 

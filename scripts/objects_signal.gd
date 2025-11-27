@@ -2,7 +2,7 @@
 class_name entity_signal
 extends Node
 
-const EXCLUDE: Array[String] = ["Camera2D", "Chunk", "Player"]
+const EXCLUDE: Array[String] = ["Camera2D", "Chunk", "Player", "PlayerSpawner"]
 
 static var objects_per_chunk: Dictionary[Vector2i, Dictionary] = {}
 static var chunks_force_save: Dictionary[Vector2i, bool] = {}
@@ -50,7 +50,7 @@ func _on_child_entered(node: Node) -> void:
 	
 	var node_name: String = node.scene_file_path.get_base_dir().get_file()
 	if node_name.is_empty(): return
-	var node_ID: int = chunk_mng.hash_string(node_name)
+	var node_ID: int = Entity_loader.hash_string(node_name)
 	node.set_script(obj_script)
 	node.obj_id = node_ID
 	node.obj_name = node_name

@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://p22pqxsrvqus"]
+[gd_scene load_steps=6 format=3 uid="uid://p22pqxsrvqus"]
 
 [ext_resource type="Script" uid="uid://b3bg4gilb8xkb" path="res://scripts/objects_signal.gd" id="1_lbhrr"]
 [ext_resource type="Script" uid="uid://cqnx0060bfqfg" path="res://scripts/camera_follow.gd" id="1_lnu2h"]
 [ext_resource type="PackedScene" uid="uid://c53auncdmtksg" path="res://scenes/chunk.tscn" id="2_yqjtg"]
 [ext_resource type="PackedScene" uid="uid://bpytpor8ff704" path="res://scenes/player.tscn" id="3_lnu2h"]
+[ext_resource type="PackedScene" uid="uid://ryapwsygqj3h" path="res://entities/player_spawner/player_spawner.tscn" id="7_0tnpc"]
 
 [node name="Game" type="Node2D"]
 script = ExtResource("1_lbhrr")
@@ -14,17 +15,21 @@ zoom = Vector2(3, 3)
 script = ExtResource("1_lnu2h")
 
 [node name="Chunk" parent="." instance=ExtResource("2_yqjtg")]
+_chunks_load_radius_editor = 10
 save_on_exit = false
 
 [node name="Player" parent="." instance=ExtResource("3_lnu2h")]
-position = Vector2(26, 78)
+position = Vector2(13, 568)
 gravity_amount = 1.7
 jump_force = 0.9
 coyote_time = 0.5
 air_speed_accel = 2.0
-_mining_level = 1
+_mining_level = 2
 _pickaxe_boost_force = 3.5
 _boost_break_time_ms = 350
 _tunelling_speed = 200.0
 _turning_speed_tunneling = 4.5
 _exit_speed = 3.0
+
+[node name="PlayerSpawner" parent="." instance=ExtResource("7_0tnpc")]
+position = Vector2(55, 620)

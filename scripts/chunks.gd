@@ -13,8 +13,11 @@ var emptyChunkTemplate: PackedByteArray
 
 var player: player_character
 
-@export var chunks_load_radius: int = 3
+@export var _chunks_load_radius_game: int = 1
+@export var _chunks_load_radius_editor: int = 5
 @export var save_on_exit: bool
+
+var _chunks_load_radius: int
 
 var _chunks_dict: Dictionary[Vector2i, chunk_tile] = {}
 var _chunks_dict_mutex: Mutex = Mutex.new()
@@ -26,23 +29,29 @@ var _loader_thread: Thread
 
 var _array_load_mutex: Mutex = Mutex.new()
 var _chunk_load_queue: Array[Vector2i] = []
+var _chunk_loading: Vector2i = Vector2i.MIN
 var _array_unload_mutex: Mutex = Mutex.new()
 var _chunk_unload_queue: Array[Vector2i] = []
+var _chunk_unloading: Vector2i = Vector2i.MIN
 
 var _last_center_chunk: Vector2i = Vector2i(-1, -1)
 var _curr_center_chunk: Vector2i
 
 static var tile_sprites: Array[Image]
 static var tile_edge_colors: Array[Color]
+static var tile_background_colors: Array[Color]
 static var tile_durability: PackedByteArray
-
-static var obj_id_to_name: Dictionary[int, String] = {}
 
 var editor_stuff_active: bool = false
 
 func _enter_tree() -> void:
 	assert(self.global_position == Vector2.ZERO, "Chunks position must be at (0, 0)")
+	
+	#maybe put this somewhere else later
+	Entity_loader.vibe_check()
+	
 	if Engine.is_editor_hint():
+		_chunks_load_radius = _chunks_load_radius_editor
 		if editor_stuff_active:
 			late_ready()
 			load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
@@ -51,6 +60,9 @@ func _enter_tree() -> void:
 			var script: Script = load("res://scripts/objects_signal.gd")
 			if script: parent.set_script(script)
 	else:
+		_chunks_load_radius = _chunks_load_radius_game
+		self.set_process(false)
+		Global.player_spawned.connect(_on_player_spawned)
 		_use_multithread = true
 		Global.chunks = self
 	
@@ -59,21 +71,25 @@ func _enter_tree() -> void:
 	for i: int in range(1, len(tile_sprites)):
 		assert(tile_sprites[i] != null)
 	
-	_load_obj_list()
 	_load_tile_resources()
 	
 	chunk_tile._tile_sprites = tile_sprites
 	chunk_tile._chunks_loaded = _chunks_dict
 	
-	_load_chunk(Vector2i(0,0))
 	if _use_multithread: _loader_start()
+
+func _on_player_spawned() -> void:
+	self.set_process(true)
+	self.player = Global.player_node
+	_load_chunk(world_to_chunk_key(player.global_position))
+	player.set_process(true)
 
 func late_ready() -> void:
 	if !Engine.is_editor_hint():
 		player = Global.player_node
 	
-	if obj_id_to_name.is_empty():
-		_load_obj_list()
+	#if obj_id_to_name.is_empty():
+		#_load_obj_list()
 
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
@@ -106,13 +122,19 @@ func _reset_queues() -> void:
 # Multithreaded chunk loading and unloading:
 func _loader_process() -> void:
 	while _loader_continue:
-		
 		# Load chunks
 		if !_chunk_load_queue.is_empty():
 			_array_load_mutex.lock()
 			var chunk_to_load_coords: Vector2i = _chunk_load_queue.pop_front()
 			_array_load_mutex.unlock()
-			print("loading from thread " + str(chunk_to_load_coords))
+			
+			if (chunk_to_load_coords == _chunk_loading or
+				chunk_to_load_coords == _chunk_unloading or
+				_chunks_dict.has(chunk_to_load_coords)):
+				continue
+			
+			#print("loading from thread " + str(chunk_to_load_coords))
+			_chunk_loading = chunk_to_load_coords
 			
 			var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
 			
@@ -125,7 +147,6 @@ func _loader_process() -> void:
 			var entities: obj_chunk = obj_chunk.deserialize(chunk_to_load_coords)
 			
 			if !entities.id.is_empty():
-				print("Loading entities")
 				if entities:
 					if Engine.is_editor_hint():
 						add_objects_editor(new_chunk_instance, entities)
@@ -142,11 +163,16 @@ func _loader_process() -> void:
 			_array_unload_mutex.lock()
 			var chunk_to_unload_coords: Vector2i = _chunk_unload_queue.pop_front()
 			_array_unload_mutex.unlock()
-			print("unloading from thread " + str(chunk_to_unload_coords))
-			if !_chunks_dict.has(chunk_to_unload_coords): continue
+			#print("unloading from thread " + str(chunk_to_unload_coords))
+			if (chunk_to_unload_coords == _chunk_loading or
+				chunk_to_unload_coords == _chunk_unloading or
+				!_chunks_dict.has(chunk_to_unload_coords)):
+				continue
+			
+			_chunk_unloading = chunk_to_unload_coords
 			var chunk_to_remove: chunk_tile = _chunks_dict[chunk_to_unload_coords]
 			
-			if !save_on_exit or Engine.is_editor_hint():
+			if should_skip_save():
 				chunk_to_remove._terrain_really_changed = false
 				chunk_to_remove.changed_terrain = false
 				chunk_to_remove.changed_entities = false
@@ -157,6 +183,7 @@ func _loader_process() -> void:
 			_chunks_dict_mutex.lock()
 			_chunks_dict.erase(chunk_to_unload_coords)
 			_chunks_dict_mutex.unlock()
+			_chunk_unloading = Vector2i.MIN
 
 #endregion
 
@@ -170,6 +197,7 @@ func _load_tile_resources() -> void:
 	tile_sprites = [null]
 	tile_durability = [0]
 	tile_edge_colors = [Color.from_rgba8(0,0,0,0)]
+	tile_background_colors = [Color.from_rgba8(0,0,0,0)]
 	
 	var tile_name: Array = chunk_tile.TILE_TYPE.keys()
 	for id: int in range(1, len(tile_name)):
@@ -177,30 +205,9 @@ func _load_tile_resources() -> void:
 		assert(tile_data)
 		tile_sprites.append(tile_data.sprite.get_image())
 		tile_edge_colors.append(tile_data.edge_color)
-		assert(tile_data.durability < 255)
+		tile_background_colors.append(tile_data.background_color)
+		assert(tile_data.durability > 0 and tile_data.durability < 255, "Error in tile " + tile_name[id])
 		tile_durability.append(tile_data.durability)
-
-func _load_obj_list() -> void:
-	var dir: DirAccess = DirAccess.open(Global.objs_path)
-	dir.list_dir_begin()
-	var file_name: String = dir.get_next()
-	var d: Dictionary[int, String] = {}
-	obj_id_to_name = d
-	while file_name != "":
-		if dir.current_is_dir():
-			var hash_id: int = hash_string(file_name)
-			obj_id_to_name[hash_id] = file_name
-		file_name = dir.get_next()
-	dir.list_dir_end()
-	print(obj_id_to_name)
-	pass
-
-static func hash_string(input: String) -> int:
-	var hash_var: int = 5381
-	for c: String in input:
-		var code: int = c.unicode_at(0)
-		hash_var = ((hash_var << 5) + hash_var) + code
-	return hash_var & 0x7FFFFFFF
 
 func is_chunk_in_bounds(check_coords: Vector2i) -> bool:
 	return FileAccess.file_exists(get_chunk_path(check_coords))
@@ -257,16 +264,6 @@ func is_tile_air(world_point: Vector2) -> bool:
 	var chunk_to_check: chunk_tile = _chunks_dict[point_key]
 	return chunk_to_check._get_tilev(chunk_to_check.world_to_grid(world_point)) == 0
 
-func breakTiless(world_rect: Rect2) -> void:
-	var top_left: Vector2 = world_rect.position
-	for x_break: int in range(top_left.x, top_left.x + world_rect.size.x):
-		for y_break: int in range(top_left.y, top_left.y + world_rect.size.y):
-			var pos: Vector2 = Vector2(x_break, y_break)
-			var chunk: Vector2i = world_to_chunk_key(pos)
-			if is_chunk_in_bounds(chunk) and _chunks_dict.has(chunk):
-				var target: chunk_tile = _chunks_dict[chunk]
-				target.destroyTiles(target.world_to_grid(pos))
-
 func change_tiles(world_rect: Rect2, type: chunk_tile.TILE_TYPE) -> void:
 	var chunk_top_left: Vector2i = world_to_chunk_key(world_rect.position)
 	var chunk_top_right: Vector2i = world_to_chunk_key(
@@ -306,6 +303,8 @@ func break_tiles(world_rect: Rect2, mining_force: int) -> void:
 		chunk_bottom_left != chunk_bottom_right and 
 		_chunks_dict.has(chunk_bottom_left)):
 		_chunks_dict[chunk_bottom_left].break_tiles(world_rect, mining_force)
+	
+	Global.terrain_break.emit(world_rect)
 
 func load_nearby_chunks(global_pos: Vector2) -> void:
 	_curr_center_chunk = world_to_chunk_key(global_pos)
@@ -317,8 +316,8 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 	
 	var editor_msg: String = "Loading: "
 	
-	for x_offset: int in range(_curr_center_chunk.x - chunks_load_radius, _curr_center_chunk.x + chunks_load_radius + 1):
-		for y_offset: int in range(_curr_center_chunk.y - chunks_load_radius, _curr_center_chunk.y + chunks_load_radius + 1):
+	for x_offset: int in range(_curr_center_chunk.x - _chunks_load_radius, _curr_center_chunk.x + _chunks_load_radius + 1):
+		for y_offset: int in range(_curr_center_chunk.y - _chunks_load_radius, _curr_center_chunk.y + _chunks_load_radius + 1):
 			var chunk_to_check: Vector2i = Vector2i(x_offset, y_offset)
 			if is_chunk_in_bounds(chunk_to_check):
 				_chunks_buff_dict[chunk_to_check] = true
@@ -383,35 +382,35 @@ func _instantiate_chunk(new_chunk: chunk_tile, new_chunk_coords: Vector2i) -> vo
 	_chunks_dict_mutex.lock()
 	_chunks_dict[new_chunk_coords] = new_chunk
 	_chunks_dict_mutex.unlock()
+	_chunk_loading = Vector2i.MIN
 
 func _unload_chunk(unloadCoords: Vector2i) -> void:
 	if !_chunks_dict.has(unloadCoords): return
 	var chunk_to_remove: chunk_tile = _chunks_dict[unloadCoords]
 	
-	if !save_on_exit or Engine.is_editor_hint():
+	if should_skip_save():
 		chunk_to_remove._terrain_really_changed = false
 		chunk_to_remove.changed_terrain = false
 		chunk_to_remove.changed_entities = false
 	
-	chunk_to_remove.unload()
 	_chunks_dict_mutex.lock()
 	_chunks_dict.erase(unloadCoords)
 	_chunks_dict_mutex.unlock()
+	
+	chunk_to_remove.unload()
 	chunk_to_remove.queue_free()
+	_chunk_unloading = Vector2i.MIN
+
+func should_skip_save() -> bool:
+	return !Engine.is_editor_hint()
 
 func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void:
 	var main_node: Node = self.get_parent()
 	if !main_node: return
 	
 	for i: int in range(len(entities.id)):
-		var obj_name: String = obj_id_to_name[entities.id[i]]
-		var path: String = "%s%s/%s.tscn" % [Global.objs_path, obj_name, obj_name]
-		if !FileAccess.file_exists(path):
-			printerr("Did not find path at " + path)
-			continue
-		var instance_scene: PackedScene = load(path)
+		var instance_scene: PackedScene = Entity_loader.load_scene(entities.id[i])
 		var instance: Node2D = instance_scene.instantiate()
-		#instance.global_position = entities.pos[i]
 		var instance_global_pos: Vector2 = original_chunk.to_global(entities.pos[i])
 		instance.set_meta("original_pos", instance_global_pos)
 		main_node.add_child(instance)
@@ -419,14 +418,7 @@ func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void
 
 func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 	for i: int in range(len(objs.id)):
-		var obj_name: String = obj_id_to_name[objs.id[i]]
-		var path: String = "res://entities/%s/%s.tscn" % [obj_name, obj_name]
-		
-		if !FileAccess.file_exists(path):
-			printerr("could not find file at " + path)
-			continue
-		
-		var tmp: PackedScene = load(path)
+		var tmp: PackedScene = Entity_loader.load_scene(objs.id[i])
 		var obj: Area2D = tmp.instantiate()
 		obj.global_position = objs.pos[i]
 		chunk_to_add.editor_add_entity(obj, objs.id[i])
@@ -436,16 +428,8 @@ func _get_objects(objs: obj_chunk) -> Array[Node2D]:
 	var instances: Array[Node2D] = []
 	
 	for i: int in range(len(objs.id)):
-		var obj_name: String = obj_id_to_name[objs.id[i]]
-		var path: String = "%s%s/%s.tscn" % [Global.objs_path, obj_name, obj_name]
-		if !FileAccess.file_exists(path):
-			printerr("Did not find path at " + path)
-			continue
-		else:
-			print("Loading " + path)
-		var instance_scene: PackedScene = load(path)
+		var instance_scene: PackedScene = Entity_loader.load_scene(objs.id[i])
 		var instance: Node2D = instance_scene.instantiate()
-		print(instance)
 		instance.global_position = objs.pos[i]
 		instances.append(instance)
 	
@@ -453,15 +437,6 @@ func _get_objects(objs: obj_chunk) -> Array[Node2D]:
 
 static func get_chunk_path(chunk_coords: Vector2i) -> String:
 	return folderPath + str(chunk_coords.x) + "_" + str(chunk_coords.y) + ".dat"
-
-#region editor
-
-func delete_objects_chunk(area: Area2D) -> void:
-	var chunk_to_delete: chunk_tile = world_to_chunk(area.global_position)
-	if chunk_to_delete == null:
-		print("Invalid position")
-		return
-	chunk_to_delete.editor_delete_entity(area)
 
 func create_empty_chunk(new_chunk_pos: Vector2i) -> void:
 	var newChunk: chunk_tile = chunk_scene.instantiate()
@@ -471,34 +446,6 @@ func create_empty_chunk(new_chunk_pos: Vector2i) -> void:
 	_chunks_dict_mutex.lock()
 	_chunks_dict[new_chunk_pos] = newChunk
 	_chunks_dict_mutex.unlock()
-
-func add_object_viewport(world_pos: Vector2, obj_id: int) -> void:
-	if !Engine.is_editor_hint(): return
-	
-	var key_to_add: Vector2i = world_to_chunk_key(world_pos)
-	if !_chunks_dict.has(key_to_add):
-		print("Invalid chunk to add object")
-		return
-	
-	var chunk_to_add: chunk_tile = _chunks_dict[key_to_add]
-	chunk_to_add.entities.id.append(obj_id)
-	chunk_to_add.entities.pos.append(world_pos)
-	chunk_to_add.changed_entities = true
-	
-	var img_tmp: Image = Image.new()
-	var obj_name: String = obj_id_to_name[obj_id]
-	var path: String = Global.objs_path + obj_name + "/" + obj_name + "_preview.png"
-	var error: Error = img_tmp.load(path)
-	if error != OK:
-		push_error("Failed to load image at path: %s" % path)
-		return
-	var obj_sprite: Sprite2D = Sprite2D.new()
-	obj_sprite.texture = ImageTexture.create_from_image(img_tmp)
-	obj_sprite.global_position = world_pos
-	if obj_sprite:
-		chunk_to_add.add_sprite(obj_sprite)
-
-#endregion
 
 func _exit_tree() -> void:
 	_loader_end()

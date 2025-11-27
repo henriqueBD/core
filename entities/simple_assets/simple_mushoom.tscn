@@ -1,0 +1,21 @@
+[gd_scene load_steps=5 format=3 uid="uid://8cp2f1i6mv1q"]
+
+[ext_resource type="Script" uid="uid://buigisa8k4h8" path="res://entities/enviroment_entity.gd" id="1_o8njk"]
+[ext_resource type="Texture2D" uid="uid://dfyw1wdmynjfp" path="res://assets/sprites/demo_cave_atlas.png" id="2_mgrat"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_4cbne"]
+atlas = ExtResource("2_mgrat")
+region = Rect2(37, 8, 7, 8)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_4ld3h"]
+size = Vector2(3, 8)
+
+[node name="SimpleMushoom" type="Area2D"]
+script = ExtResource("1_o8njk")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = SubResource("AtlasTexture_4cbne")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(-0.5, 0)
+shape = SubResource("RectangleShape2D_4ld3h")

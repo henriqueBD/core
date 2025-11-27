@@ -314,7 +314,7 @@ func break_tiles(destroy_rect_world: Rect2, mining_force: int) -> void:
 				continue
 			_terrain_really_changed = true
 			_set_tile(x_pos, y_pos, TILE_TYPE.AIR)
-			img.set_pixel(x_pos, y_pos, Color.from_rgba8(0, 0, 0, 0))
+			img.set_pixel(x_pos, y_pos, chunk_mng.tile_background_colors[tile_to_break])
 	
 	if _terrain_really_changed:
 		_recalculate_area(destroy_rect_world)
@@ -508,7 +508,7 @@ func _save_terrain() -> void:
 	var target_path: String = chunk_mng.get_chunk_path(coords)
 	var file_to_save: FileAccess = FileAccess.open(target_path, FileAccess.WRITE)
 	if file_to_save:
-		var compressed_data: PackedByteArray = compress_chunk()
+		var compressed_data: PackedByteArray = compress_chunk(self.data)
 		var data_len: int = compressed_data.size()
 		var data_len_buffer: PackedByteArray = [0,0]
 		data_len_buffer[0] = data_len & 0xFF
@@ -518,25 +518,25 @@ func _save_terrain() -> void:
 	else:
 		print("Probem trying to save chunk " + str(coords))
 
-func compress_chunk() -> PackedByteArray:
+static func compress_chunk(decompressed_data: PackedByteArray) -> PackedByteArray:
 	const REPEAT_BYTE_MARKER: int = 255
-	if data.size() > Global.CHUNK_SIZE:
-		push_error("Chunk size %d exceeds maximum allowed size %d" % [data.size(), Global.CHUNK_SIZE])
+	if decompressed_data.size() > Global.CHUNK_SIZE:
+		push_error("Chunk size %d exceeds maximum allowed size %d" % [decompressed_data.size(), Global.CHUNK_SIZE])
 		return PackedByteArray() # Return empty array on error
 	
 	var buf: PackedByteArray = PackedByteArray()
-	buf.resize(data.size())
+	buf.resize(decompressed_data.size())
 	
 	var buf_i: int = 0
 	var i: int = 0
 	var j: int = 0
-	var chunk_len: int = data.size()
+	var chunk_len: int = decompressed_data.size()
 	
 	while i < chunk_len:
-		var curr_byte: int = data[i]
+		var curr_byte: int = decompressed_data[i]
 	
 		j = i + 1
-		while j < chunk_len and data[j] == curr_byte:
+		while j < chunk_len and decompressed_data[j] == curr_byte:
 			j += 1
 	
 		var streak: int = j - i

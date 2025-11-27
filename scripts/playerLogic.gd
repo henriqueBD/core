@@ -44,12 +44,14 @@ var _should_try_tunnel: bool
 var _is_tunneling: bool
 
 func _enter_tree() -> void:
+	self.set_process(false)
 	Global.player_node = self
 
 func _ready() -> void:
 	chunk = Global.chunks
 	_coyote_time_ms = int(coyote_time * 1000)
 	collisions.check_collisions_while_deactivated = true
+	Global.player_spawned.emit()
 
 func _exit_tree() -> void:
 	Global.player_node = null
@@ -341,3 +343,6 @@ func hit_pickaxe() -> void:
 	_external_acell += boost_dir.normalized() * _pickaxe_boost_force
 	_boost_should_end_time = Time.get_ticks_msec() + _boost_break_time_ms
 	_should_try_tunnel = true
+
+func teleport(new_world_coords: Vector2) -> void:
+	self.collisions.teleport(new_world_coords)
