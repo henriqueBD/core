@@ -5,9 +5,11 @@ extends Object
 static var _id_to_path: Dictionary[int, NodePath] = {
 	hash_string("falling_spike_small"): "res://entities/falling_spike_small/falling_spike_small.tscn",
 	hash_string("simple_mushoom") : "res://entities/simple_assets/simple_mushoom.tscn",
+	hash_string("simple_rock") : "res://entities/simple_assets/simple_rock.tscn",
 }
 
 static func vibe_check() -> void:
+	print("Vibe checking")
 	for path: NodePath in _id_to_path.values():
 		assert(FileAccess.file_exists(path), "Path not found: " + str(path))
 

@@ -229,6 +229,9 @@ func _get_tile_safe(x: int, y: int) -> TILE_TYPE:
 		return chunk_search._get_tilev(chunk_search.world_to_grid(global_coords))
 	else: return _get_tile(x, y)
 
+func _update_terrain_image() -> void:
+	tex.update(img)
+
 #region Terrain changes
 
 var _terrain_really_changed: bool
@@ -492,6 +495,8 @@ func remove_swap(arr: Array, index: int) -> void:
 		arr[index] = arr[last_index]
 	arr.pop_back()
 
+func should_save_terrain() -> bool:
+	return changed_terrain
 
 func unload() -> void:
 	#if changed_entities:
@@ -500,9 +505,6 @@ func unload() -> void:
 	if changed_terrain:
 		print("Saving chunk terrain: " + str(coords))
 		_save_terrain()
-
-func _save_entities() -> void:
-	obj_chunk.serialize_and_save(self.entities, self.coords)
 
 func _save_terrain() -> void:
 	var target_path: String = chunk_mng.get_chunk_path(coords)

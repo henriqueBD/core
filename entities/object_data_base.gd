@@ -3,28 +3,32 @@ class_name obj_chunk
 var id: Array[int]
 var pos: Array[Vector2]
 
-static func serialize_and_save(data: obj_chunk, coord_to_save: Vector2i) -> void:
+func add_obj(id_push: int, pos_push: Vector2) -> void:
+	id.append(id_push)
+	pos.append(pos_push)
+
+func serialize_and_save(coord_to_save: Vector2i) -> void:
 	var file_path: String = chunk_tile.get_entities_map(coord_to_save)
 	
-	if data.id.is_empty():
+	if id.is_empty():
 		if FileAccess.file_exists(file_path):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(file_path))
 		return
 	
-	if data.pos.size() != data.id.size():
+	if pos.size() != id.size():
 		printerr("Error in saving objs for chunk " + str(coord_to_save))
 		return
 	
 	var bytes: PackedByteArray = PackedByteArray()
-	bytes.resize(data.pos.size() * 8 + data.id.size() * 8) # assuming 8 bytes per Vector2/Int64 component
+	bytes.resize(pos.size() * 8 + id.size() * 8) # assuming 8 bytes per Vector2/Int64 component
 	var offset: int = 0
 	
-	for p: Vector2 in data.pos:
+	for p: Vector2 in pos:
 		bytes.encode_float(offset, p.x)
 		bytes.encode_float(offset + 4, p.y)
 		offset += 8
 	
-	for id_tmp: int in data.id:
+	for id_tmp: int in id:
 		bytes.encode_s64(offset, id_tmp)
 		offset += 8
 	

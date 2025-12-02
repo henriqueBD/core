@@ -20,6 +20,7 @@ var player: player_character
 var _chunks_load_radius: int
 
 var _chunks_dict: Dictionary[Vector2i, chunk_tile] = {}
+var _unloaded_chunks_terrain_modified: Dictionary[Vector2i, PackedByteArray] = {}
 var _chunks_dict_mutex: Mutex = Mutex.new()
 var _chunks_buff_dict: Dictionary[Vector2i, bool]
 
@@ -138,11 +139,17 @@ func _loader_process() -> void:
 			
 			var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
 			
-			var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
+			#Load chunk terrain
+			var terrain_data: PackedByteArray
+			if _unloaded_chunks_terrain_modified.has(chunk_to_load_coords):
+				terrain_data = chunk_tile.decompress_chunk(_unloaded_chunks_terrain_modified[chunk_to_load_coords])
+			else:
+				terrain_data = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
 			assert(terrain_data.size() == chunk_tile.EXPECTED_DATA_SIZE)
 			
 			var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
 			
+			#Load chunk entities
 			var instances: Array[Node2D] = []
 			var entities: obj_chunk = obj_chunk.deserialize(chunk_to_load_coords)
 			
@@ -171,6 +178,10 @@ func _loader_process() -> void:
 			
 			_chunk_unloading = chunk_to_unload_coords
 			var chunk_to_remove: chunk_tile = _chunks_dict[chunk_to_unload_coords]
+			
+			if chunk_to_remove.should_save_terrain():
+				var terrain_compressed: PackedByteArray = chunk_tile.compress_chunk(chunk_to_remove.data)
+				_unloaded_chunks_terrain_modified[chunk_to_unload_coords] = terrain_compressed
 			
 			if should_skip_save():
 				chunk_to_remove._terrain_really_changed = false
