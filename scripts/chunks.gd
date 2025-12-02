@@ -67,6 +67,7 @@ func _enter_tree() -> void:
 		_use_multithread = true
 		Global.chunks = self
 	
+	create_empty_chunk_file()
 	emptyChunkTemplate = FileAccess.get_file_as_bytes(emptyChunkPath)
 	assert(len(emptyChunkTemplate) > 0)
 	for i: int in range(1, len(tile_sprites)):
@@ -145,7 +146,7 @@ func _loader_process() -> void:
 				terrain_data = chunk_tile.decompress_chunk(_unloaded_chunks_terrain_modified[chunk_to_load_coords])
 			else:
 				terrain_data = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
-			assert(terrain_data.size() == chunk_tile.EXPECTED_DATA_SIZE)
+			assert(terrain_data.size() == Globals.CHUNK_SIZE)
 			
 			var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
 			
@@ -457,6 +458,18 @@ func create_empty_chunk(new_chunk_pos: Vector2i) -> void:
 	_chunks_dict_mutex.lock()
 	_chunks_dict[new_chunk_pos] = newChunk
 	_chunks_dict_mutex.unlock()
+
+func create_empty_chunk_file() -> void:
+	var empty_data_decompressed: PackedByteArray = []
+	empty_data_decompressed.resize(Globals.CHUNK_SIZE)
+	for i: int in range(empty_data_decompressed.size()):
+		empty_data_decompressed[i] = chunk_tile.TILE_TYPE.AIR
+	var file_to_save: FileAccess = FileAccess.open(emptyChunkPath, FileAccess.WRITE)
+	if file_to_save:
+		var compressed_data: PackedByteArray = chunk_tile.compress_chunk(empty_data_decompressed)
+		file_to_save.store_buffer(compressed_data)
+	else:
+		printerr("Probem trying to save empty chunk ")
 
 func _exit_tree() -> void:
 	_loader_end()

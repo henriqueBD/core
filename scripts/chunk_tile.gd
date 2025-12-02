@@ -2,8 +2,6 @@
 class_name chunk_tile
 extends Sprite2D
 
-const EXPECTED_DATA_SIZE: int = 65025
-
 var img: Image
 var tex: ImageTexture
 var coords: Vector2i = Vector2i(0,0)
@@ -32,7 +30,7 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	else:
 		data = decompress_chunk(data_empty)
 	
-	assert(data.size() == EXPECTED_DATA_SIZE)
+	assert(data.size() == Globals.CHUNK_SIZE)
 	
 	self.position.x += c.x * Global.CHUNK_SIDE
 	self.position.y += c.y * Global.CHUNK_SIDE
@@ -69,7 +67,7 @@ func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArr
 	self.coords = key
 	
 	self.data = decompressed_data
-	assert(data.size() == EXPECTED_DATA_SIZE)
+	assert(data.size() == Globals.CHUNK_SIZE)
 	
 	self.entities = obj_chunk.new()
 	self.global_position = Global.CHUNK_SIDE * key
@@ -88,15 +86,12 @@ func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArr
 	return null
 
 static func get_bytes(coords_tmp: Vector2i) -> PackedByteArray:
+	
 	var targetName: String = chunk_mng.get_chunk_path(coords_tmp)
-	var file: FileAccess = FileAccess.open(targetName, FileAccess.READ)
-	if file:
-		var size: int = file.get_length()
-		var dataTmp: PackedByteArray = file.get_buffer(size)
-		file.close()
-		return dataTmp
+	if FileAccess.file_exists(targetName):
+		return FileAccess.get_file_as_bytes(targetName)
 	else:
-		print("Failed to open file for chunk ", str(coords_tmp))
+		printerr("Failed to get file " + targetName)
 		return []
 
 func _has_same_neighborsv(coord_check: Vector2i) -> bool:
@@ -112,44 +107,7 @@ func _has_same_neighbors(x_check: int, y_check: int) -> bool:
 	)
 
 static func decompress_chunk(compressed_data: PackedByteArray) -> PackedByteArray:
-	var decompressed_data: PackedByteArray = PackedByteArray()
-	
-	const REPEAT_BYTE_MARKER: int = 255
-	
-	var data_size: int = (compressed_data[1] << 8) | compressed_data[0]
-	var i: int = 2
-	#var i: int = 0
-	while i < data_size:
-	#while decompressed_data.size() < Global.CHUNK_SIDE * Global.CHUNK_SIDE:
-		var current_byte: int = compressed_data[i]
-
-		if current_byte == REPEAT_BYTE_MARKER:
-			# Ensure there are enough bytes for a full sequence (marker, value, count_low, count_high).
-			if i + 3 >= compressed_data.size():
-				# This indicates corrupted or incomplete data.
-				# You might want to handle this error more gracefully.
-				push_error("Incomplete compressed sequence found at index %d" % i)
-				break
-
-			var byte_to_repeat: int = compressed_data[i + 1]
-			
-			# Reconstruct the 16-bit streak count from two bytes.
-			var low_byte: int = compressed_data[i + 2]
-			var high_byte: int = compressed_data[i + 3]
-			var streak: int = (high_byte << 8) | low_byte
-
-			# Append the repeated byte 'streak' number of times.
-			for _j: int in range(streak):
-				decompressed_data.append(byte_to_repeat)
-			
-			# Move the index past the entire 4-byte sequence.
-			i += 4
-		else:
-			# If it's not a marker, it's a literal byte.
-			decompressed_data.append(current_byte)
-			i += 1
-			
-	return decompressed_data
+	return compressed_data.decompress(Globals.CHUNK_SIZE, Globals.CHUNK_COMPRESSION_METHOD)
 
 static func create_texture_from_terrain_data(terrain_data: PackedByteArray) -> Image:
 	var terrain_img: Image = Image.create_empty(Global.CHUNK_SIDE, Global.CHUNK_SIDE, false, Image.FORMAT_RGBA8)
@@ -511,51 +469,12 @@ func _save_terrain() -> void:
 	var file_to_save: FileAccess = FileAccess.open(target_path, FileAccess.WRITE)
 	if file_to_save:
 		var compressed_data: PackedByteArray = compress_chunk(self.data)
-		var data_len: int = compressed_data.size()
-		var data_len_buffer: PackedByteArray = [0,0]
-		data_len_buffer[0] = data_len & 0xFF
-		data_len_buffer[1] = (data_len >> 8) & 0xFF
-		file_to_save.store_buffer(data_len_buffer)
 		file_to_save.store_buffer(compressed_data)
 	else:
 		print("Probem trying to save chunk " + str(coords))
 
 static func compress_chunk(decompressed_data: PackedByteArray) -> PackedByteArray:
-	const REPEAT_BYTE_MARKER: int = 255
-	if decompressed_data.size() > Global.CHUNK_SIZE:
-		push_error("Chunk size %d exceeds maximum allowed size %d" % [decompressed_data.size(), Global.CHUNK_SIZE])
-		return PackedByteArray() # Return empty array on error
-	
-	var buf: PackedByteArray = PackedByteArray()
-	buf.resize(decompressed_data.size())
-	
-	var buf_i: int = 0
-	var i: int = 0
-	var j: int = 0
-	var chunk_len: int = decompressed_data.size()
-	
-	while i < chunk_len:
-		var curr_byte: int = decompressed_data[i]
-	
-		j = i + 1
-		while j < chunk_len and decompressed_data[j] == curr_byte:
-			j += 1
-	
-		var streak: int = j - i
-		if streak < 4:
-			for k: int in range(streak):
-				buf[buf_i] = curr_byte
-				buf_i += 1
-		else:
-			buf[buf_i] = REPEAT_BYTE_MARKER
-			buf[buf_i + 1] = curr_byte
-			buf[buf_i + 2] = streak & 0xFF
-			buf[buf_i + 3] = (streak >> 8) & 0xFF
-			buf_i += 4
-	
-		i = j
-	
-	return buf.slice(0, buf_i)
+	return decompressed_data.compress(Globals.CHUNK_COMPRESSION_METHOD)
 
 func add_sprite(sprite: Sprite2D) -> void:
 	if sprite:

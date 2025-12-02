@@ -13,6 +13,7 @@ signal terrain_break(area: Rect2i)
 const objs_path: String = "res://entities/"
 const CHUNK_SIDE: int = 255
 const CHUNK_SIZE: int = CHUNK_SIDE * CHUNK_SIDE
+const CHUNK_COMPRESSION_METHOD: int = FileAccess.COMPRESSION_ZSTD
 const NO_COLLISION_RAYCAST: float = -INF
 
 var main_node: Node

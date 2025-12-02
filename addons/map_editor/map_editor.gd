@@ -186,7 +186,7 @@ func _select_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
 					var chunk_image: Image = get_chunk_image(curr_chunk)
 					img.blit_rect(chunk_image, Rect2i(Vector2i(0,0), chunk_image.get_size()), offset_pixels)
 			
-			var name := "%d_%d-%d_%d" % [min_chunk.x, min_chunk.y, max_chunk.x, max_chunk.y]
+			var name := "%d_%d=%d_%d" % [min_chunk.x, min_chunk.y, max_chunk.x, max_chunk.y]
 			img.save_png("C:/Users/Henrique/Desktop/buffer" + "/" + name + ".png")
 			print("Area saved")
 		
@@ -195,7 +195,7 @@ func _select_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
 			var path_tarrain := "C:/Users/Henrique/Desktop/buffer"
 			var dir: DirAccess = DirAccess.open(path_tarrain)
 			if DirAccess.get_open_error():
-				print("Error")
+				print("Error :(")
 				return true
 			
 			for file_name: String in dir.get_files():
@@ -206,7 +206,6 @@ func _select_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
 	return true
 
 func decode_and_load_chunks_from_image(file_name: String) -> void:
-	
 	_color_to_tile_ID = {}
 	_color_to_tile_ID[Color.BLACK] = 0
 	for i: int in range(len(chunk_mng.tile_edge_colors)):
@@ -216,7 +215,7 @@ func decode_and_load_chunks_from_image(file_name: String) -> void:
 	var image: Image = Image.load_from_file(path_tarrain + "/" + file_name)
 	file_name.trim_suffix(".png")
 	
-	var parts := file_name.split("-")
+	var parts := file_name.split("=")
 	var v1_parts := parts[0].split("_")
 	var v2_parts := parts[1].split("_")
 	
@@ -242,7 +241,7 @@ func decode_and_load_chunks_from_image(file_name: String) -> void:
 		if !_chunks._chunks_dict.has(reload): continue
 		var reload_instance := _chunks._chunks_dict[reload]
 		var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(reload))
-		assert(terrain_data.size() == chunk_tile.EXPECTED_DATA_SIZE)
+		assert(terrain_data.size() == Globals.CHUNK_SIZE)
 		var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
 		reload_instance.data = terrain_data
 		reload_instance.img = terrain_image
@@ -271,11 +270,6 @@ func encode_single_chunk(chunk_image: Image, coords: Vector2i) -> void:
 	if file_to_save:
 		print("Saving")
 		var compressed_data: PackedByteArray = chunk_tile.compress_chunk(data)
-		var data_len: int = compressed_data.size()
-		var data_len_buffer: PackedByteArray = [0,0]
-		data_len_buffer[0] = data_len & 0xFF
-		data_len_buffer[1] = (data_len >> 8) & 0xFF
-		file_to_save.store_buffer(data_len_buffer)
 		file_to_save.store_buffer(compressed_data)
 	else:
 		print("Probem trying to save chunk " + str(coords))
@@ -286,7 +280,7 @@ func get_chunk_image(coords: Vector2i) -> Image:
 	
 	if FileAccess.file_exists(chunk_mng.get_chunk_path(coords)):
 		var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(coords))
-		if terrain_data.size() == chunk_tile.EXPECTED_DATA_SIZE:
+		if terrain_data.size() == Globals.CHUNK_SIZE:
 			return chunk_tile.get_terrain_image_static(terrain_data)
 		else:
 			printerr("Failed to decompress chunk in map_editor" + str(coords))
