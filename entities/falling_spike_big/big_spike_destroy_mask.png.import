@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://d083k8eiwk2pu"
+path="res://.godot/imported/big_spike_destroy_mask.png-88cba5dd3a8fa230c17556c90001fcac.image"
+
+[deps]
+
+source_file="res://entities/falling_spike_big/big_spike_destroy_mask.png"
+dest_files=["res://.godot/imported/big_spike_destroy_mask.png-88cba5dd3a8fa230c17556c90001fcac.image"]
+
+[params]
+

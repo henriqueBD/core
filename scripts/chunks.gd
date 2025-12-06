@@ -13,7 +13,7 @@ var emptyChunkTemplate: PackedByteArray
 
 var player: player_character
 
-@export var _chunks_load_radius_game: int = 1
+@export var _chunks_load_radius_game: int = 2
 @export var _chunks_load_radius_editor: int = 5
 @export var save_on_exit: bool
 
@@ -149,6 +149,7 @@ func _loader_process() -> void:
 			assert(terrain_data.size() == Globals.CHUNK_SIZE)
 			
 			var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
+			var terrain_mask: Image = chunk_tile.get_terrain_mask_from_data(terrain_data)
 			
 			#Load chunk entities
 			var instances: Array[Node2D] = []
@@ -164,7 +165,7 @@ func _loader_process() -> void:
 					printerr("Failed to get entities at chunk " + str(chunk_to_load_coords))
 			
 			call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
-			new_chunk_instance.initialize_deffered(chunk_to_load_coords, terrain_data, terrain_image, instances)
+			new_chunk_instance.initialize_deffered(chunk_to_load_coords, terrain_data, terrain_image, terrain_mask, instances)
 		
 		#Unload chunks
 		if !_chunk_unload_queue.is_empty():
@@ -237,10 +238,19 @@ func world_to_chunk(world_pos: Vector2) -> chunk_tile:
 	var key: Vector2i = world_to_chunk_key(world_pos)
 	return _chunks_dict[key]
 
-#check chunk_to_eval.eval_area for more info
+#returns a data Vector2
+#X: the angle of the general direction of the tiles different that AIR in relation to the rect center,
+#	if no tiles returns NAN
+#Y: the angle of the general direction of the tiles that cannot be broken with the mining_force in relation to the rect center,
+#	if no tiles returns NAN
 func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
 	var chunk_to_eval: chunk_tile = world_to_chunk(area_rect.position)
 	return chunk_to_eval.eval_area(area_rect, mining_force)
+
+#same result as eval_area but with mask
+func eval_area_mask(start_world: Vector2, mask: Image, mining_force: int) -> Vector2:
+	var chunk_to_eval: chunk_tile = world_to_chunk(start_world)
+	return chunk_to_eval.eval_area_mask(start_world, mask, mining_force)
 
 #region Ray Cast
 
@@ -315,6 +325,32 @@ func break_tiles(world_rect: Rect2, mining_force: int) -> void:
 		chunk_bottom_left != chunk_bottom_right and 
 		_chunks_dict.has(chunk_bottom_left)):
 		_chunks_dict[chunk_bottom_left].break_tiles(world_rect, mining_force)
+	
+	Global.terrain_break.emit(world_rect)
+
+func break_tiles_mask(global_top_left: Vector2, mask: Image, mining_force: int) -> void:
+	var world_rect: Rect2 = Rect2(
+		global_top_left,
+		mask.get_size() as Vector2
+	)
+	var chunk_top_left: Vector2i = world_to_chunk_key(world_rect.position)
+	var chunk_top_right: Vector2i = world_to_chunk_key(
+		Vector2(world_rect.position.x + world_rect.size.x, world_rect.position.y))
+	var chunk_bottom_right: Vector2i = world_to_chunk_key(
+		Vector2(world_rect.position.x, world_rect.position.y + world_rect.size.y))
+	var chunk_bottom_left: Vector2i = world_to_chunk_key(
+		Vector2(world_rect.position.x + world_rect.size.x, world_rect.position.y + world_rect.size.y))
+	
+	if _chunks_dict.has(chunk_top_left):
+		_chunks_dict[chunk_top_left].break_tiles_mask(global_top_left, mask, mining_force)
+	if chunk_top_right != chunk_top_left and _chunks_dict.has(chunk_top_right):
+		_chunks_dict[chunk_top_right].break_tiles_mask(global_top_left, mask, mining_force)
+	if chunk_bottom_right != chunk_top_left and _chunks_dict.has(chunk_bottom_right):
+		_chunks_dict[chunk_bottom_right].break_tiles_mask(global_top_left, mask, mining_force)
+	if (chunk_bottom_left != chunk_top_right and 
+		chunk_bottom_left != chunk_bottom_right and 
+		_chunks_dict.has(chunk_bottom_left)):
+		_chunks_dict[chunk_bottom_left].break_tiles_mask(global_top_left, mask, mining_force)
 	
 	Global.terrain_break.emit(world_rect)
 

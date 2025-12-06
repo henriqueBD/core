@@ -3,6 +3,8 @@ class_name chunk_tile
 extends Sprite2D
 
 var img: Image
+var _terrain_mask: Image
+var _global_bounds: Rect2i
 var tex: ImageTexture
 var coords: Vector2i = Vector2i(0,0)
 var data: PackedByteArray
@@ -24,6 +26,8 @@ static func get_entities_map(entities_cord: Vector2i) -> String:
 func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	self.set_process(false)
 	coords = c
+	
+	self.z_index = Globals.LAYER_CHUNK_TERRAIN
 	
 	if len(data_empty) == 0:
 		data = decompress_chunk(get_bytes(c))
@@ -57,13 +61,14 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	entities = obj_chunk.deserialize(c)
 	return entities
 
-func initialize_deffered(key: Vector2i, decompressed_data: PackedByteArray, image: Image, instances: Array[Node2D]) -> void:
+func initialize_deffered(key: Vector2i, decompressed_data: PackedByteArray, image: Image, mask: Image, instances: Array[Node2D]) -> void:
 	var sprite: ImageTexture = ImageTexture.create_from_image(image)
-	call_deferred("_initialize_deffered_helper", key, decompressed_data, image, sprite, instances)
+	call_deferred("_initialize_deffered_helper", key, decompressed_data, image, mask, sprite, instances)
 
-func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArray, image: Image, sprite: ImageTexture, instances: Array[Node2D]) -> obj_chunk:
+func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArray, image: Image, mask: Image, sprite: ImageTexture, instances: Array[Node2D]) -> void:
 	self.set_process(false)
 	
+	self.z_index = Globals.LAYER_CHUNK_TERRAIN
 	self.coords = key
 	
 	self.data = decompressed_data
@@ -72,18 +77,22 @@ func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArr
 	self.entities = obj_chunk.new()
 	self.global_position = Global.CHUNK_SIDE * key
 	self.img = image
+	self._terrain_mask = mask
 	self.tex = sprite
 	self.texture = sprite
+	self._global_bounds = Rect2i(
+		self.coords * Globals.CHUNK_SIDE,
+		Vector2i(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE)
+	)
 	
 	for obj: Node2D in instances:
-		
 		##Fix later
 		#var b: Vector2 = obj.global_position
 		self.add_child(obj)
 		#obj.global_position = b
 		obj.owner = self
 	
-	return null
+	Global.chunk_load.emit(self)
 
 static func get_bytes(coords_tmp: Vector2i) -> PackedByteArray:
 	
@@ -134,6 +143,15 @@ static func create_texture_from_terrain_data(terrain_data: PackedByteArray) -> I
 			)
 	
 	return terrain_img
+
+static func get_terrain_mask_from_data(terrain_data: PackedByteArray) -> Image:
+	var image_res: Image = Image.create_empty(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE, false, Image.FORMAT_L8)
+	for x: int in range(Globals.CHUNK_SIDE):
+		for y: int in range(Globals.CHUNK_SIDE):
+			image_res.set_pixel(
+				x, y, Color.TRANSPARENT if terrain_data[y * Global.CHUNK_SIDE + x] == TILE_TYPE.AIR else Color.WHITE
+			)
+	return image_res
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos: Vector2 = to_local(world_pos)
@@ -206,14 +224,14 @@ func _change_single_tile(gridPos: Vector2i, new_type: TILE_TYPE) -> void:
 		_tile_sprites[new_type].get_pixelv(Vector2i((gridPos)) % _tile_sprites[new_type].get_size())
 	)
 
-func _recalculate_area(recalculate_rect: Rect2) -> void:
-	recalculate_rect = recalculate_rect.grow(1)
+func _recalculate_area(recalculate_rect_global: Rect2) -> void:
+	recalculate_rect_global = recalculate_rect_global.grow(1)
 	
-	var grid_pos_start: Vector2i = world_to_grid(recalculate_rect.position)
+	var grid_pos_start: Vector2i = world_to_grid(recalculate_rect_global.position)
 	grid_pos_start.x = max(0, grid_pos_start.x)
 	grid_pos_start.y = max(0, grid_pos_start.y)
 	
-	var grid_pos_end: Vector2i = world_to_grid(recalculate_rect.position + recalculate_rect.size)
+	var grid_pos_end: Vector2i = world_to_grid(recalculate_rect_global.position + recalculate_rect_global.size)
 	grid_pos_end.x = min(Global.CHUNK_SIDE, grid_pos_end.x)
 	grid_pos_end.y = min(Global.CHUNK_SIDE, grid_pos_end.y)
 	
@@ -282,11 +300,39 @@ func break_tiles(destroy_rect_world: Rect2, mining_force: int) -> void:
 		tex.update(img)
 		changed_terrain = true
 
-#returns a data Vector2
-#X: the angle of the general direction of the tiles different that AIR in relation to the rect center,
-#	if no tiles returns NAN
-#Y: the angle of the general direction of the tiles that cannot be broken with the mining_force in relation to the rect center,
-#	if no tiles returns NAN
+func break_tiles_mask(start: Vector2, mask: Image, mining_force: int) -> void:
+	_terrain_really_changed = false
+	
+	var grid_pos_start: Vector2i = world_to_grid(start)
+	var image_origin_x: int = grid_pos_start.x
+	var image_origin_y: int = grid_pos_start.y
+	grid_pos_start.x = max(0, grid_pos_start.x)
+	grid_pos_start.y = max(0, grid_pos_start.y)
+	
+	var grid_pos_end: Vector2i = world_to_grid(Vector2i(start) + mask.get_size())
+	grid_pos_end.x = min(Global.CHUNK_SIDE, grid_pos_end.x)
+	grid_pos_end.y = min(Global.CHUNK_SIDE, grid_pos_end.y)
+	
+	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
+		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
+			var tile_to_break: TILE_TYPE = _get_tile(x_pos, y_pos)
+			if (mask.get_pixel(x_pos - image_origin_x, y_pos - image_origin_y) == Color.BLACK or
+				tile_to_break == TILE_TYPE.AIR or 
+				chunk_mng.tile_durability[tile_to_break] > mining_force):
+				continue
+			_terrain_really_changed = true
+			_set_tile(x_pos, y_pos, TILE_TYPE.AIR)
+			img.set_pixel(x_pos, y_pos, chunk_mng.tile_background_colors[tile_to_break])
+	
+	if _terrain_really_changed:
+		_recalculate_area(Rect2i(
+			start,
+			mask.get_size()
+		))
+		tex.update(img)
+		changed_terrain = true
+
+#check chunks.eval area for more info
 func eval_area(global_rect: Rect2, mining_force: int) -> Vector2:
 	var tiles_dir: Vector2 = Vector2.ZERO
 	var stronger_tiles_dir: Vector2 = Vector2.ZERO
@@ -300,6 +346,28 @@ func eval_area(global_rect: Rect2, mining_force: int) -> Vector2:
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
 			tile_tmp = _get_tile_safe(x_pos, y_pos)
 			if tile_tmp != TILE_TYPE.AIR:
+				tiles_dir += Vector2(x_pos, y_pos) - rect_center
+				if chunk_mng.tile_durability[int(tile_tmp)] > mining_force:
+					stronger_tiles_dir += Vector2(x_pos, y_pos) - rect_center
+	
+	return Vector2(
+		NAN if tiles_dir == Vector2.ZERO else tiles_dir.angle(), 
+		NAN if stronger_tiles_dir == Vector2.ZERO else stronger_tiles_dir.angle())
+
+func eval_area_mask(start_world: Vector2i, mask: Image, mining_force: int) -> Vector2:
+	var tiles_dir: Vector2 = Vector2.ZERO
+	var stronger_tiles_dir: Vector2 = Vector2.ZERO
+	
+	var grid_pos_start: Vector2i = world_to_grid(start_world)
+	var grid_pos_end: Vector2i = world_to_grid(start_world + mask.get_size())
+	var rect_center: Vector2 = (grid_pos_start + grid_pos_end) / 2.0
+	
+	var tile_tmp: TILE_TYPE
+	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
+		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
+			tile_tmp = _get_tile_safe(x_pos, y_pos)
+			if (mask.get_pixel(x_pos - grid_pos_start.x, y_pos - grid_pos_start.y) != Color.BLACK and
+				tile_tmp != TILE_TYPE.AIR):
 				tiles_dir += Vector2(x_pos, y_pos) - rect_center
 				if chunk_mng.tile_durability[int(tile_tmp)] > mining_force:
 					stronger_tiles_dir += Vector2(x_pos, y_pos) - rect_center
