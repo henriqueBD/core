@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://buy1vc1212rnk"
-path="res://.godot/imported/falling_spike_small_sprite.png-77390a906c1ebe4e475169cfea2a844f.ctex"
+uid="uid://dl8abhkf0ffcv"
+path="res://.godot/imported/drop_pod.png-fc7aeb60bb16dc50cfa4dce3369a7075.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://entities/falling_spike_small/falling_spike_small_sprite.png"
-dest_files=["res://.godot/imported/falling_spike_small_sprite.png-77390a906c1ebe4e475169cfea2a844f.ctex"]
+source_file="res://assets/sprites/drop_pod.png"
+dest_files=["res://.godot/imported/drop_pod.png-fc7aeb60bb16dc50cfa4dce3369a7075.ctex"]
 
 [params]
 

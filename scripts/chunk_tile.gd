@@ -16,7 +16,7 @@ var entities: obj_chunk
 static var _tile_sprites: Array[Image]
 static var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
 
-enum TILE_TYPE { AIR, dirt, stone, gold, clovium }
+enum TILE_TYPE { AIR, dirt, stone, gold, clovium, metal }
 
 enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
 
@@ -212,18 +212,6 @@ func _update_terrain_image() -> void:
 
 var _terrain_really_changed: bool
 
-func _change_single_tile(gridPos: Vector2i, new_type: TILE_TYPE) -> void:
-	if _get_tilev(gridPos) == new_type and img.get_pixelv(gridPos) != chunk_mng.tile_edge_colors[new_type]:
-		return
-	_terrain_really_changed = true
-	_set_tilev(gridPos, new_type)
-	if new_type == TILE_TYPE.AIR:
-		img.set_pixelv(gridPos, chunk_mng.tile_edge_colors[0])
-	else: img.set_pixelv(
-		gridPos, 
-		_tile_sprites[new_type].get_pixelv(Vector2i((gridPos)) % _tile_sprites[new_type].get_size())
-	)
-
 func _recalculate_area(recalculate_rect_global: Rect2) -> void:
 	recalculate_rect_global = recalculate_rect_global.grow(1)
 	
@@ -241,6 +229,30 @@ func _recalculate_area(recalculate_rect_global: Rect2) -> void:
 			if !_has_same_neighbors(x_pos, y_pos):
 				img.set_pixel(x_pos, y_pos, chunk_mng.tile_edge_colors[_get_tile(x_pos, y_pos)])
 
+func _recalculate_area_accurate(recalculate_rect_global: Rect2) -> void:
+	recalculate_rect_global = recalculate_rect_global.grow(1)
+	
+	var grid_pos_start: Vector2i = world_to_grid(recalculate_rect_global.position)
+	grid_pos_start.x = max(0, grid_pos_start.x)
+	grid_pos_start.y = max(0, grid_pos_start.y)
+	
+	var grid_pos_end: Vector2i = world_to_grid(recalculate_rect_global.position + recalculate_rect_global.size)
+	grid_pos_end.x = min(Global.CHUNK_SIDE, grid_pos_end.x)
+	grid_pos_end.y = min(Global.CHUNK_SIDE, grid_pos_end.y)
+	
+	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
+		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
+			var tile: TILE_TYPE = _get_tile(x_pos, y_pos)
+			if tile == TILE_TYPE.AIR: continue
+			if !_has_same_neighbors(x_pos, y_pos):
+				img.set_pixel(x_pos, y_pos, chunk_mng.tile_edge_colors[tile])
+			else:
+				img.set_pixel(
+				x_pos, y_pos, 
+				_tile_sprites[tile].get_pixelv(Vector2i(x_pos, y_pos) % _tile_sprites[tile].get_size())
+				)
+				
+
 func get_terrain_image() -> Image:
 	var image_res: Image = Image.create_empty(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE, false, Image.FORMAT_RGB8)
 	for x: int in range(Globals.CHUNK_SIDE):
@@ -256,8 +268,6 @@ static func get_terrain_image_static(terrain_data: PackedByteArray) -> Image:
 	return image_res
 
 func change_tiles(destroy_rect_world: Rect2, new_type: TILE_TYPE) -> void:
-	_terrain_really_changed = false
-	
 	var grid_pos_start: Vector2i = world_to_grid(destroy_rect_world.position)
 	grid_pos_start.x = max(0, grid_pos_start.x)
 	grid_pos_start.y = max(0, grid_pos_start.y)
@@ -268,12 +278,11 @@ func change_tiles(destroy_rect_world: Rect2, new_type: TILE_TYPE) -> void:
 	
 	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
-			_change_single_tile(Vector2i(x_pos, y_pos), new_type)
+			_set_tile(x_pos, y_pos, new_type)
 	
-	if _terrain_really_changed:
-		_recalculate_area(destroy_rect_world)
-		tex.update(img)
-		changed_terrain = true
+	_recalculate_area_accurate(destroy_rect_world)
+	tex.update(img)
+	changed_terrain = true
 
 func break_tiles(destroy_rect_world: Rect2, mining_force: int) -> void:
 	_terrain_really_changed = false
@@ -487,29 +496,14 @@ func ray_cast_general(world_start: Vector2, world_end: Vector2) -> float:
 
 #region editor
 
-var areas: Array[Area2D]
 var changed_entities: bool = false
 var changed_terrain: bool = false
 
-func editor_add_entity(entity: Area2D, entity_id: int) -> void:
+func editor_add_entity(entity: Node2D, entity_id: int) -> void:
 	entity.position = self.to_local(entity.global_position)
 	add_child(entity)
-	areas.append(entity)
 	entities.id.append(entity_id)
 	entities.pos.append(entity.global_position)
-	changed_entities = true
-
-func editor_delete_entity(cursor_area: Area2D) -> void:
-	var l: int = len(areas)
-	for i: int in range(l):
-		var area: Area2D = areas[i]
-		if area.overlaps_area(cursor_area):
-			print("Delete")
-			remove_child(area)
-			remove_swap(areas, i)
-			remove_swap(entities.id, i)
-			remove_swap(entities.pos, i)
-			return
 	changed_entities = true
 
 func remove_swap(arr: Array, index: int) -> void:

@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3 uid="uid://ce1x20at5tfqj"]
+
+[ext_resource type="Script" uid="uid://buigisa8k4h8" path="res://entities/enviroment_entity.gd" id="1_bkaoi"]
+[ext_resource type="Texture2D" uid="uid://drlhxmqvkoixv" path="res://assets/sprites/fungi_cave_assets.png" id="2_hxeth"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5a8ut"]
+atlas = ExtResource("2_hxeth")
+region = Rect2(1, 69, 21, 21)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1gwv6"]
+size = Vector2(4, 20)
+
+[node name="BigMushroom1" type="Area2D"]
+script = ExtResource("1_bkaoi")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(0, -21)
+texture = SubResource("AtlasTexture_5a8ut")
+centered = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(7, -10)
+shape = SubResource("RectangleShape2D_1gwv6")

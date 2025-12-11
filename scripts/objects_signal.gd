@@ -76,6 +76,7 @@ func _on_chunk_child_leaving(node: Node) -> void:
 	chunks_force_save.erase(chunk.coords)
 	
 	var objects_to_save: obj_chunk = obj_chunk.new()
+	var objects_saved: Dictionary[Vector3, bool] = {}
 	
 	for nd: Node in objects_per_chunk[chunk.coords]:
 		if not nd:
@@ -87,8 +88,12 @@ func _on_chunk_child_leaving(node: Node) -> void:
 			printerr("Error 2 in saving object to chunk")
 			continue
 		obj.chunk_unloaded = true
-		#chunk.add_entity_backend(obj.obj_id, obj.global_position)
-		objects_to_save.add_obj(obj.obj_id, chunk.to_local(obj.global_position))
+		
+		var unique_key: Vector3 = Vector3(obj.obj_id, obj.global_position.x, obj.global_position.y)
+		if !objects_saved.has(unique_key):
+			objects_to_save.add_obj(obj.obj_id, chunk.to_local(obj.global_position))
+			objects_saved[unique_key] = true
+			
 		if obj.changed():
 			save = true
 	

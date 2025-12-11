@@ -19,7 +19,7 @@ _chunks_load_radius_editor = 10
 save_on_exit = false
 
 [node name="Player" parent="." instance=ExtResource("3_lnu2h")]
-position = Vector2(13, 568)
+position = Vector2(-108, 583)
 gravity_amount = 1.7
 jump_force = 0.9
 coyote_time = 0.5
@@ -32,4 +32,4 @@ _turning_speed_tunneling = 4.5
 _exit_speed = 3.0
 
 [node name="PlayerSpawner" parent="." instance=ExtResource("7_0tnpc")]
-position = Vector2(55, 620)
+position = Vector2(-130, 582)

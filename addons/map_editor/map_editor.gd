@@ -46,10 +46,10 @@ func _enter_tree():
 	var curr_scene := EditorInterface.get_edited_scene_root()
 	
 	if not curr_scene:
-		print("Fail 1")
+		printerr("Fail 1")
 	else:
 		if curr_scene.name != TARGET_SCENE_PATH:
-			print("Fail 2")
+			printerr("Fail 2")
 		else:
 			#_try_connect_signal()
 			_chunks = curr_scene.get_node_or_null("Chunk")
@@ -95,6 +95,8 @@ func _change_state(new_state: EDITOR_STATE) -> void:
 	print(EDITOR_STATE.keys()[int(new_state)])
 	if new_state == EDITOR_STATE.select_chunk:
 		_chunks_selected.clear()
+	if new_state == EDITOR_STATE.terraform:
+		Editor.set_num_tiles()
 	_curr_state = new_state
 
 #region state update
@@ -370,7 +372,7 @@ func _on_work_place_changed(screen_name: String) -> void:
 
 func _on_scene_changed(scene_root: Node) -> void:
 	if not scene_root:
-		print("oops")
+		printerr("oops")
 		_same_scene = false
 		unload_stuff()
 		_check_if_should_update()

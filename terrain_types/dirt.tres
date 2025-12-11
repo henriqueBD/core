@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_mbnpj")
 sprite = ExtResource("2_fn5gb")
-edge_color = Color(0.47843137, 0.2784314, 0.20784314, 1)
-background_color = Color(0.17, 0.047599997, 0.047599997, 1)
+edge_color = Color(0.17962557, 0.08604015, 0.058460124, 1)
+background_color = Color(0.10850663, 0.015405059, 0.0129872225, 1)
 durability = 1
 metadata/_custom_type_script = "uid://0jaudmxqm274"

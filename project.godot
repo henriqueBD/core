@@ -117,4 +117,4 @@ hit_pickaxe={
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
-environment/defaults/default_clear_color=Color(0.11099165, 0.08966593, 0.18481484, 1)
+environment/defaults/default_clear_color=Color(0.011764706, 0.011764706, 0.007843138, 1)

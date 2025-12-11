@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://dmk683a37c1d2"]
+
+[ext_resource type="Texture2D" uid="uid://dl8abhkf0ffcv" path="res://assets/sprites/drop_pod.png" id="1_maint"]
+
+[node name="DropPod" type="Sprite2D"]
+z_index = -1
+texture = ExtResource("1_maint")

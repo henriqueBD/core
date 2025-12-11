@@ -2,12 +2,35 @@
 class_name Entity_loader
 extends Object
 
-static var _id_to_path: Dictionary[int, NodePath] = {
-	hash_string("falling_spike_small"): "res://entities/falling_spike_small/falling_spike_small.tscn",
-	hash_string("falling_spike_big") : "res://entities/falling_spike_big/falling_spike_big.tscn",
-	hash_string("simple_mushoom") : "res://entities/simple_assets/simple_mushoom.tscn",
-	hash_string("simple_rock") : "res://entities/simple_assets/simple_rock.tscn",
-}
+static var _id_to_path: Dictionary[int, NodePath]
+
+static func init_dictionaty(path: String) -> void:
+	_id_to_path.clear()
+	_init_dictionaty_helper(path)
+
+static func _init_dictionaty_helper(path: String) -> void:
+	var dir: DirAccess = DirAccess.open(path)
+	
+	if dir == null:
+		printerr("Invalid directory path: " + path)
+		return
+	
+	dir.list_dir_begin()
+	
+	while true:
+		var file: String = dir.get_next()
+		
+		if file == "":
+			break
+		
+		if file.ends_with(".tscn"):
+			var scene_name: String = file.trim_suffix(".tscn")
+			var scene_path: NodePath = NodePath("%s/%s" % [path , file])
+			_id_to_path[hash_string(scene_name)] = scene_path
+	
+	var directories: PackedStringArray = dir.get_directories()
+	for d: String in directories:
+		_init_dictionaty_helper("%s/%s" % [path, d])
 
 static func vibe_check() -> void:
 	print("Vibe checking")

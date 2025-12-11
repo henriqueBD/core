@@ -49,6 +49,7 @@ func _enter_tree() -> void:
 	assert(self.global_position == Vector2.ZERO, "Chunks position must be at (0, 0)")
 	
 	#maybe put this somewhere else later
+	Entity_loader.init_dictionaty("res://entities")
 	Entity_loader.vibe_check()
 	
 	if Engine.is_editor_hint():
@@ -467,7 +468,7 @@ func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void
 func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 	for i: int in range(len(objs.id)):
 		var tmp: PackedScene = Entity_loader.load_scene(objs.id[i])
-		var obj: Area2D = tmp.instantiate()
+		var obj: Node2D = tmp.instantiate()
 		obj.global_position = objs.pos[i]
 		chunk_to_add.editor_add_entity(obj, objs.id[i])
 	chunk_to_add.changed_entities = false

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b6d4826v5fxlp"
-path="res://.godot/imported/big_spike.png-2fd37d14eec2daaf570f931d3dc9b9f8.ctex"
+uid="uid://c1j2xkxw54oo5"
+path="res://.godot/imported/metal.png-d1da0940283073f1b0cc43463f575bf3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://entities/falling_spike_big/big_spike.png"
-dest_files=["res://.godot/imported/big_spike.png-2fd37d14eec2daaf570f931d3dc9b9f8.ctex"]
+source_file="res://assets/sprites/terrain/metal.png"
+dest_files=["res://.godot/imported/metal.png-d1da0940283073f1b0cc43463f575bf3.ctex"]
 
 [params]
 

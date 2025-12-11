@@ -1,21 +1,23 @@
 [gd_scene load_steps=5 format=3 uid="uid://8cp2f1i6mv1q"]
 
 [ext_resource type="Script" uid="uid://buigisa8k4h8" path="res://entities/enviroment_entity.gd" id="1_o8njk"]
-[ext_resource type="Texture2D" uid="uid://dfyw1wdmynjfp" path="res://assets/sprites/demo_cave_atlas.png" id="2_mgrat"]
+[ext_resource type="Texture2D" uid="uid://drlhxmqvkoixv" path="res://assets/sprites/fungi_cave_assets.png" id="2_qukmw"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_4cbne"]
-atlas = ExtResource("2_mgrat")
-region = Rect2(37, 8, 7, 8)
+[sub_resource type="AtlasTexture" id="AtlasTexture_nsdbt"]
+atlas = ExtResource("2_qukmw")
+region = Rect2(3, 96, 9, 9)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_4ld3h"]
-size = Vector2(3, 8)
+size = Vector2(4, 8)
 
 [node name="SimpleMushoom" type="Area2D"]
 script = ExtResource("1_o8njk")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
-texture = SubResource("AtlasTexture_4cbne")
+position = Vector2(-5, -9)
+texture = SubResource("AtlasTexture_nsdbt")
+centered = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(-0.5, 0)
+position = Vector2(0, -4)
 shape = SubResource("RectangleShape2D_4ld3h")

@@ -15,7 +15,7 @@ enum EDITOR_STATE {
 static var curr_update: EDITOR_STATE = EDITOR_STATE.place_obj
 static var is_active: bool = false
 
-const num_tiles: int = 5
+static var num_tiles: int = 0
 
 static var curr_obj_index: int = 0
 static var curr_obj: PackedScene
@@ -29,17 +29,22 @@ static var break_radius: int = 20
 static var cursor_position: Vector2
 
 func _ready() -> void:
+	set_num_tiles()
 	if OS.has_feature("editor"):
 		print("Debug allowed")
 	else:
 		print("level editor only on engine")
 		curr_update = EDITOR_STATE.unreachable
+		self.set_script(null)
 		return
 	
 	populate_obj_arrays()
 	
 	chunk = Global.chunks
 	chunk.late_ready()
+
+static func set_num_tiles() -> void:
+	num_tiles = chunk_tile.TILE_TYPE.keys().size()
 
 static func populate_obj_arrays() -> void:
 	var dir: DirAccess = DirAccess.open(Global.objs_path)
@@ -184,9 +189,9 @@ static func terraform(scroll_up: bool, scroll_down: bool, shift: bool,
 			print("Brush radius: " + str(break_radius))
 	
 	if mouse_hold:
-		if curr_tile_index < 0 or curr_tile_index >= num_tiles:
-			print("Invalid tile index: " + str(curr_tile_index))
-			return break_radius
+		#if curr_tile_index < 0 or curr_tile_index >= num_tiles:
+			#print("Invalid tile with index: " + str(curr_tile_index))
+			#return break_radius
 		
 		var brush_size: Vector2 = Vector2(break_radius, break_radius)
 		

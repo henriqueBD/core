@@ -1,7 +1,11 @@
-[gd_scene load_steps=5 format=3 uid="uid://mqwh6xku2waw"]
+[gd_scene load_steps=6 format=3 uid="uid://mqwh6xku2waw"]
 
 [ext_resource type="Script" uid="uid://cjiut40bfmnit" path="res://entities/falling_spike_small/spike_small.gd" id="1_3075u"]
-[ext_resource type="Texture2D" uid="uid://buy1vc1212rnk" path="res://entities/falling_spike_small/falling_spike_small_sprite.png" id="1_b34g7"]
+[ext_resource type="Texture2D" uid="uid://drlhxmqvkoixv" path="res://assets/sprites/fungi_cave_assets.png" id="2_3075u"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_xsobv"]
+atlas = ExtResource("2_3075u")
+region = Rect2(159, 238, 18, 17)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_3075u"]
 size = Vector2(14, 15)
@@ -14,7 +18,7 @@ script = ExtResource("1_3075u")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 position = Vector2(0, 1)
-texture = ExtResource("1_b34g7")
+texture = SubResource("AtlasTexture_xsobv")
 offset = Vector2(0, 0.5)
 
 [node name="spike_collision" type="CollisionShape2D" parent="."]
