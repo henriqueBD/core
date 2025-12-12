@@ -11,7 +11,7 @@ const terrain_type_folder: String = "res://terrain_types/"
 const emptyChunkPath: String = folderPath + "emptyChunk.dat"
 var emptyChunkTemplate: PackedByteArray
 
-var player: player_character
+var _player: player_character
 
 @export var _chunks_load_radius_game: int = 2
 @export var _chunks_load_radius_editor: int = 5
@@ -27,6 +27,8 @@ var _chunks_buff_dict: Dictionary[Vector2i, bool]
 var _use_multithread: bool = false
 var _loader_continue: bool = true
 var _loader_thread: Thread
+
+var _terrain_break_thread: Thread
 
 var _array_load_mutex: Mutex = Mutex.new()
 var _chunk_load_queue: Array[Vector2i] = []
@@ -83,13 +85,13 @@ func _enter_tree() -> void:
 
 func _on_player_spawned() -> void:
 	self.set_process(true)
-	self.player = Global.player_node
-	_load_chunk(world_to_chunk_key(player.global_position))
-	player.set_process(true)
+	_player = Global.player_node
+	_load_chunk(world_to_chunk_key(_player.global_position))
+	_player.set_process(true)
 
 func late_ready() -> void:
 	if !Engine.is_editor_hint():
-		player = Global.player_node
+		_player = Global.player_node
 	
 	#if obj_id_to_name.is_empty():
 		#_load_obj_list()
@@ -99,7 +101,7 @@ func _process(_delta: float) -> void:
 		if editor_stuff_active:
 			load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
 	else:
-		load_nearby_chunks(player.global_position)
+		load_nearby_chunks(_player.global_position)
 
 #region Chunk loader
 
@@ -199,13 +201,29 @@ func _loader_process() -> void:
 			_chunks_dict_mutex.unlock()
 			_chunk_unloading = Vector2i.MIN
 
-#endregion
-
 func _loader_end() -> void:
 	_loader_continue = false
 	if _loader_thread:
 		print("Exiting chunk loader")
 		_loader_thread.wait_to_finish()
+
+#endregion
+
+#region Terrain Breaker
+
+func _terrain_breaker_start() -> void:
+	_terrain_breaker_end()
+	if !_terrain_break_thread:
+		_terrain_break_thread = Thread.new()
+
+func _terrain_breaker_process() -> void:
+	pass
+
+func _terrain_breaker_end() -> void:
+	if _terrain_break_thread and _terrain_break_thread.is_alive():
+		_terrain_break_thread.wait_to_finish()
+
+#endregion
 
 func _load_tile_resources() -> void:
 	tile_sprites = [null]
@@ -402,14 +420,6 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 	if Engine.is_editor_hint(): 
 		if len(editor_msg) > 11: print(editor_msg)
 
-func add_object_chunk(global_pos: Vector2, obj: Node2D, obj_id: int) -> void:
-	var chunk_to_add: chunk_tile = world_to_chunk(global_pos)
-	if chunk_to_add == null:
-		print("Invalid position")
-		return
-	obj.global_position = global_pos
-	chunk_to_add.editor_add_entity(obj, obj_id)
-
 func _load_chunk(load_coords: Vector2i) -> void:
 	#print("loading " + str(load_coords))
 	
@@ -468,9 +478,9 @@ func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void
 func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 	for i: int in range(len(objs.id)):
 		var tmp: PackedScene = Entity_loader.load_scene(objs.id[i])
-		var obj: Node2D = tmp.instantiate()
-		obj.global_position = objs.pos[i]
-		chunk_to_add.editor_add_entity(obj, objs.id[i])
+		var instance: Node2D = tmp.instantiate()
+		instance.global_position = objs.pos[i]
+		chunk_to_add.add_child(instance)
 	chunk_to_add.changed_entities = false
 
 func _get_objects(objs: obj_chunk) -> Array[Node2D]:

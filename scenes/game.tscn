@@ -32,4 +32,4 @@ _turning_speed_tunneling = 4.5
 _exit_speed = 3.0
 
 [node name="PlayerSpawner" parent="." instance=ExtResource("7_0tnpc")]
-position = Vector2(-130, 582)
+position = Vector2(-171, 622)

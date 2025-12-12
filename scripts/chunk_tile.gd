@@ -499,13 +499,6 @@ func ray_cast_general(world_start: Vector2, world_end: Vector2) -> float:
 var changed_entities: bool = false
 var changed_terrain: bool = false
 
-func editor_add_entity(entity: Node2D, entity_id: int) -> void:
-	entity.position = self.to_local(entity.global_position)
-	add_child(entity)
-	entities.id.append(entity_id)
-	entities.pos.append(entity.global_position)
-	changed_entities = true
-
 func remove_swap(arr: Array, index: int) -> void:
 	if index < 0 or index >= arr.size():
 		push_error("Index out of bounds in remove_swap")

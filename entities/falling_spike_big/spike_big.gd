@@ -6,17 +6,19 @@ const FALLING_SPEED: float = 120
 
 static var TERRAIN_DESTROY_MASK: Image = load("res://entities/falling_spike_big/big_spike_destroy_mask.png")
 
-var timer_self_destroy: float = 0.0
-var timer_touch: float = 0.0
+var _timer_self_destroy: float = 0.0
+var _timer_touch: float = 0.0
+var _breaker: Terrain_breaker = Terrain_breaker.new()
+var _chunks: chunk_mng
 
 @onready var player_detection: CollisionShape2D = $CollisionShape2D
 
-var _chunks: chunk_mng
 
 func _ready() -> void:
 	var sprite_2d: Sprite2D = $Sprite2D
 	sprite_2d.z_index = Globals.LAYER_ENTITY
 	_chunks = Global.chunks
+	_breaker.set_parameters(2, TERRAIN_DESTROY_MASK, 5)
 	set_process(false)
 
 func _on_area_entered(area: Area2D) -> void:
@@ -33,9 +35,9 @@ func _fall() -> void:
 
 #Falling logic
 func _process(delta: float) -> void:
-	timer_self_destroy += delta
+	_timer_self_destroy += delta
 	
-	if timer_self_destroy > MAX_FALLING_SEC:
+	if _timer_self_destroy > MAX_FALLING_SEC:
 		_destroy()
 		return
 	
@@ -43,13 +45,14 @@ func _process(delta: float) -> void:
 	
 	var res: Vector2 = _chunks.eval_area_mask(self.global_position, TERRAIN_DESTROY_MASK, 1)
 	
-	if timer_touch > 0.0 or !is_nan(res.y):
-		timer_touch += delta
+	if _timer_touch > 0.0 or !is_nan(res.y):
+		_timer_touch += delta
 	
-	if timer_touch > DESTROY_AFTER_TOUCH_SEC:
+	if _timer_touch > DESTROY_AFTER_TOUCH_SEC:
 		_destroy()
 	
-	_chunks.break_tiles_mask(self.global_position, TERRAIN_DESTROY_MASK, 2)
+	#_chunks.break_tiles_mask(self.global_position, TERRAIN_DESTROY_MASK, 2)
+	_breaker.break_terrain(self.global_position)
 
 func _destroy() -> void:
 	queue_free()

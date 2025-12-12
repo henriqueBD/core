@@ -377,13 +377,10 @@ func _on_scene_changed(scene_root: Node) -> void:
 		unload_stuff()
 		_check_if_should_update()
 		return
-	print("changed scene")
 	if str(scene_root.name) != TARGET_SCENE_PATH:
-		print("Not same path")
-		unload_stuff()
+		#unload_stuff()
 		_same_scene = false
 	else:
-		#_try_connect_signal()
 		_same_scene = true
 		if not _chunks and _same_workplace:
 			var curr_scene := EditorInterface.get_edited_scene_root()

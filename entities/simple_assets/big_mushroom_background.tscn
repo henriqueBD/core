@@ -1,3 +1,11 @@
-[gd_scene format=3 uid="uid://pt1dko8w857q"]
+[gd_scene load_steps=3 format=3 uid="uid://pt1dko8w857q"]
 
-[node name="BigMushroomBackground" type="Node2D"]
+[ext_resource type="Texture2D" uid="uid://drlhxmqvkoixv" path="res://assets/sprites/fungi_cave_assets.png" id="1_iknp5"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_up3it"]
+atlas = ExtResource("1_iknp5")
+region = Rect2(51, 46, 39, 47)
+
+[node name="BigMushroomBackground" type="Sprite2D"]
+z_index = -1
+texture = SubResource("AtlasTexture_up3it")

@@ -1,0 +1,24 @@
+[gd_scene load_steps=5 format=3 uid="uid://bui6ts3xw6eda"]
+
+[ext_resource type="Script" uid="uid://buigisa8k4h8" path="res://entities/enviroment_entity.gd" id="1_v6763"]
+[ext_resource type="Texture2D" uid="uid://drlhxmqvkoixv" path="res://assets/sprites/fungi_cave_assets.png" id="2_bs54h"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_seyt2"]
+atlas = ExtResource("2_bs54h")
+region = Rect2(1, 3, 29, 5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_5fdul"]
+size = Vector2(27, 3)
+
+[node name="SimpleVine" type="Area2D"]
+script = ExtResource("1_v6763")
+terrain_relation = 2
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(-14, -2)
+texture = SubResource("AtlasTexture_seyt2")
+centered = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 0.5)
+shape = SubResource("RectangleShape2D_5fdul")
