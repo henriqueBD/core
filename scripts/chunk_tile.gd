@@ -87,9 +87,7 @@ func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArr
 	
 	for obj: Node2D in instances:
 		##Fix later
-		#var b: Vector2 = obj.global_position
 		self.add_child(obj)
-		#obj.global_position = b
 		obj.owner = self
 	
 	Global.chunk_load.emit(self)
@@ -309,7 +307,7 @@ func break_tiles(destroy_rect_world: Rect2, mining_force: int) -> void:
 		tex.update(img)
 		changed_terrain = true
 
-func break_tiles_mask(start: Vector2, mask: Image, mining_force: int) -> void:
+func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
 	_terrain_really_changed = false
 	
 	var grid_pos_start: Vector2i = world_to_grid(start)
@@ -325,7 +323,7 @@ func break_tiles_mask(start: Vector2, mask: Image, mining_force: int) -> void:
 	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
 			var tile_to_break: TILE_TYPE = _get_tile(x_pos, y_pos)
-			if (mask.get_pixel(x_pos - image_origin_x, y_pos - image_origin_y) == Color.BLACK or
+			if (!mask.get_bit(x_pos - image_origin_x, y_pos - image_origin_y) or
 				tile_to_break == TILE_TYPE.AIR or 
 				chunk_mng.tile_durability[tile_to_break] > mining_force):
 				continue
@@ -363,7 +361,7 @@ func eval_area(global_rect: Rect2, mining_force: int) -> Vector2:
 		NAN if tiles_dir == Vector2.ZERO else tiles_dir.angle(), 
 		NAN if stronger_tiles_dir == Vector2.ZERO else stronger_tiles_dir.angle())
 
-func eval_area_mask(start_world: Vector2i, mask: Image, mining_force: int) -> Vector2:
+func eval_area_mask(start_world: Vector2i, mask: BitMap, mining_force: int) -> Vector2:
 	var tiles_dir: Vector2 = Vector2.ZERO
 	var stronger_tiles_dir: Vector2 = Vector2.ZERO
 	
@@ -375,7 +373,7 @@ func eval_area_mask(start_world: Vector2i, mask: Image, mining_force: int) -> Ve
 	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
 			tile_tmp = _get_tile_safe(x_pos, y_pos)
-			if (mask.get_pixel(x_pos - grid_pos_start.x, y_pos - grid_pos_start.y) != Color.BLACK and
+			if (!mask.get_bit(x_pos - grid_pos_start.x, y_pos - grid_pos_start.y) and
 				tile_tmp != TILE_TYPE.AIR):
 				tiles_dir += Vector2(x_pos, y_pos) - rect_center
 				if chunk_mng.tile_durability[int(tile_tmp)] > mining_force:

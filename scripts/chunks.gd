@@ -181,6 +181,7 @@ func _loader_process() -> void:
 				!_chunks_dict.has(chunk_to_unload_coords)):
 				continue
 			
+			Global.chunk_pre_unload.emit(chunk_to_unload_coords)
 			_chunk_unloading = chunk_to_unload_coords
 			var chunk_to_remove: chunk_tile = _chunks_dict[chunk_to_unload_coords]
 			
@@ -257,6 +258,15 @@ func world_to_chunk(world_pos: Vector2) -> chunk_tile:
 	var key: Vector2i = world_to_chunk_key(world_pos)
 	return _chunks_dict[key]
 
+func is_rect_in_bounds(rect: Rect2) -> bool:
+	var start_chunk: Vector2i = world_to_chunk_key(rect.position)
+	var end_chunk: Vector2i = world_to_chunk_key(rect.position + rect.size)
+	
+	for x: int in range(start_chunk.x, end_chunk.x + 1):
+		for y: int in range(start_chunk.y, end_chunk.y + 1):
+			if !_chunks_dict.has(Vector2i(x, y)): return false
+	return true
+
 #returns a data Vector2
 #X: the angle of the general direction of the tiles different that AIR in relation to the rect center,
 #	if no tiles returns NAN
@@ -267,7 +277,7 @@ func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
 	return chunk_to_eval.eval_area(area_rect, mining_force)
 
 #same result as eval_area but with mask
-func eval_area_mask(start_world: Vector2, mask: Image, mining_force: int) -> Vector2:
+func eval_area_mask(start_world: Vector2, mask: BitMap, mining_force: int) -> Vector2:
 	var chunk_to_eval: chunk_tile = world_to_chunk(start_world)
 	return chunk_to_eval.eval_area_mask(start_world, mask, mining_force)
 
@@ -347,7 +357,7 @@ func break_tiles(world_rect: Rect2, mining_force: int) -> void:
 	
 	Global.terrain_break.emit(world_rect)
 
-func break_tiles_mask(global_top_left: Vector2, mask: Image, mining_force: int) -> void:
+func break_tiles_mask(global_top_left: Vector2, mask: BitMap, mining_force: int) -> void:
 	var world_rect: Rect2 = Rect2(
 		global_top_left,
 		mask.get_size() as Vector2
@@ -446,6 +456,7 @@ func _instantiate_chunk(new_chunk: chunk_tile, new_chunk_coords: Vector2i) -> vo
 func _unload_chunk(unloadCoords: Vector2i) -> void:
 	if !_chunks_dict.has(unloadCoords): return
 	var chunk_to_remove: chunk_tile = _chunks_dict[unloadCoords]
+	Global.chunk_pre_unload.emit(unloadCoords)
 	
 	if should_skip_save():
 		chunk_to_remove._terrain_really_changed = false

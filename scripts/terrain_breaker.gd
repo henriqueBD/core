@@ -1,12 +1,17 @@
-class_name Terrain_breaker
+class_name TerrainBreaker
 extends Object
 
 var _force: int
 var _last_break: Vector2
 var _distance_tolerance_squared: int
-var _mask: Image
+var _mask: BitMap
 
-func set_parameters(force: int, mask: Image, distance_tolerance: int = 1) -> void:
+static func create_bitmap(img: Image) -> BitMap:
+	var res: BitMap = BitMap.new()
+	res.create_from_image_alpha(img)
+	return res
+
+func set_parameters(force: int, mask: BitMap, distance_tolerance: int = 1) -> void:
 	_force = force
 	_mask = mask
 	_distance_tolerance_squared = max(distance_tolerance, 1) ^ 2

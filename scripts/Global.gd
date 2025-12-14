@@ -6,7 +6,12 @@ extends Node
 
 signal player_spawned
 signal terrain_break(area: Rect2i)
+
+##Careful, this signal will not be called by the main thread
 signal chunk_load(coordinate: Vector2i)
+
+##Careful, this signal will not be called by the main thread
+signal chunk_pre_unload(coordinate: Vector2i)
 
 @warning_ignore_restore("unused_signal")
 #endregion

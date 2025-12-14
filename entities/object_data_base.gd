@@ -1,35 +1,42 @@
 class_name obj_chunk
 
-var id: Array[int]
-var pos: Array[Vector2]
+var id_static: Array[int]
+var pos_static: Array[Vector2]
 
-func add_obj(id_push: int, pos_push: Vector2) -> void:
-	id.append(id_push)
-	pos.append(pos_push)
+var id_dynamic: Array[int]
+var pos_dynamic: Array[Vector2]
+
+func add_obj(id_static_push: int, pos_static_push: Vector2, is_static: bool) -> void:
+	if is_static:
+		id_static.append(id_static_push)
+		pos_static.append(pos_static_push)
+	else:
+		id_dynamic.append(id_static_push)
+		pos_dynamic.append(pos_static_push)
 
 func serialize_and_save(coord_to_save: Vector2i) -> void:
 	var file_path: String = chunk_tile.get_entities_map(coord_to_save)
 	
-	if id.is_empty():
+	if id_static.is_empty():
 		if FileAccess.file_exists(file_path):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(file_path))
 		return
 	
-	if pos.size() != id.size():
+	if pos_static.size() != id_static.size():
 		printerr("Error in saving objs for chunk " + str(coord_to_save))
 		return
 	
 	var bytes: PackedByteArray = PackedByteArray()
-	bytes.resize(pos.size() * 8 + id.size() * 8) # assuming 8 bytes per Vector2/Int64 component
+	bytes.resize(pos_static.size() * 8 + id_static.size() * 8) # assuming 8 bytes per Vector2/Int64 component
 	var offset: int = 0
 	
-	for p: Vector2 in pos:
+	for p: Vector2 in pos_static:
 		bytes.encode_float(offset, p.x)
 		bytes.encode_float(offset + 4, p.y)
 		offset += 8
 	
-	for id_tmp: int in id:
-		bytes.encode_s64(offset, id_tmp)
+	for id_static_tmp: int in id_static:
+		bytes.encode_s64(offset, id_static_tmp)
 		offset += 8
 	
 	var file: FileAccess = FileAccess.open(file_path, FileAccess.WRITE)
@@ -50,20 +57,20 @@ static func deserialize(coords: Vector2i) -> obj_chunk:
 	stream.data_array = data
 	
 	var chunk_objs: obj_chunk = obj_chunk.new()
-	chunk_objs.pos = []
-	chunk_objs.id = []
+	chunk_objs.pos_static = []
+	chunk_objs.id_static = []
 	
 	var count: int = size / 16
 	
-	# Read positions
+	# Read pos_staticitions
 	for i: int in count:
 		var x: float = stream.get_float()
 		var y: float = stream.get_float()
-		chunk_objs.pos.append(Vector2(x, y))
+		chunk_objs.pos_static.append(Vector2(x, y))
 	
-	# Read IDs
+	# Read id_statics
 	for i: int in count:
-		var id_val: int = stream.get_64()
-		chunk_objs.id.append(id_val)
+		var id_static_val: int = stream.get_64()
+		chunk_objs.id_static.append(id_static_val)
 	
 	return chunk_objs
