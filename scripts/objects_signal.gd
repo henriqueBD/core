@@ -46,6 +46,7 @@ func _try_connect(name_signal: String, fn: Callable) -> void:
 
 func _on_child_entered(node: Node) -> void:
 	if node.name in EXCLUDE: return
+	var is_dynamic: bool = _is_dynamic_obj(node)
 	_lobotomize_node(node)
 	var node_name: String = node.scene_file_path.get_file().trim_suffix(".tscn")
 	print(node_name)
@@ -54,6 +55,17 @@ func _on_child_entered(node: Node) -> void:
 	node.set_script(obj_script)
 	node.obj_id = node_ID
 	node.obj_name = node_name
+	node.is_dynamic = is_dynamic
+
+func _is_dynamic_obj(node: Node) -> bool:
+	const DYNAMIC_NAME: StringName = "DynamicObjTracker"
+	
+	var script: Script = node.get_script()
+	if script and script.get_global_name() == DYNAMIC_NAME: return true
+	for c: Node in node.get_children():
+		if _is_dynamic_obj(c): return true
+	
+	return false
 
 func _lobotomize_node(node: Node) -> void:
 	node.set_script(null)
@@ -91,7 +103,7 @@ func _on_chunk_child_leaving(node: Node) -> void:
 		
 		var unique_key: Vector3 = Vector3(obj.obj_id, obj.global_position.x, obj.global_position.y)
 		if !objects_saved.has(unique_key):
-			objects_to_save.add_obj(obj.obj_id, chunk.to_local(obj.global_position))
+			objects_to_save.add_obj(obj.obj_id, chunk.to_local(obj.global_position), !obj.is_dynamic)
 			objects_saved[unique_key] = true
 			
 		if obj.changed():

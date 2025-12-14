@@ -1,76 +1,95 @@
 class_name obj_chunk
 
-var id_static: Array[int]
-var pos_static: Array[Vector2]
+const _ERROR: PackedByteArray = [255]
 
-var id_dynamic: Array[int]
-var pos_dynamic: Array[Vector2]
+var id_static: PackedInt64Array = []
+var pos_static: PackedVector2Array = []
 
-func add_obj(id_static_push: int, pos_static_push: Vector2, is_static: bool) -> void:
+var id_dynamic: PackedInt64Array = []
+var pos_dynamic: PackedVector2Array = []
+
+func add_obj(id_push: int, pos_push: Vector2, is_static: bool) -> void:
 	if is_static:
-		id_static.append(id_static_push)
-		pos_static.append(pos_static_push)
+		id_static.append(id_push)
+		pos_static.append(pos_push)
 	else:
-		id_dynamic.append(id_static_push)
-		pos_dynamic.append(pos_static_push)
+		id_dynamic.append(id_push)
+		pos_dynamic.append(pos_push)
 
 func serialize_and_save(coord_to_save: Vector2i) -> void:
 	var file_path: String = chunk_tile.get_entities_map(coord_to_save)
 	
-	if id_static.is_empty():
+	if id_static.is_empty() and id_dynamic.is_empty():
 		if FileAccess.file_exists(file_path):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(file_path))
 		return
 	
-	if pos_static.size() != id_static.size():
+	if pos_static.size() != id_static.size() or pos_dynamic.size() != id_dynamic.size():
 		printerr("Error in saving objs for chunk " + str(coord_to_save))
 		return
-	
-	var bytes: PackedByteArray = PackedByteArray()
-	bytes.resize(pos_static.size() * 8 + id_static.size() * 8) # assuming 8 bytes per Vector2/Int64 component
-	var offset: int = 0
-	
-	for p: Vector2 in pos_static:
-		bytes.encode_float(offset, p.x)
-		bytes.encode_float(offset + 4, p.y)
-		offset += 8
-	
-	for id_static_tmp: int in id_static:
-		bytes.encode_s64(offset, id_static_tmp)
-		offset += 8
+
+	var bytes_static: PackedByteArray = _serialize_helper(id_static, pos_static)
+	var bytes_dynamic: PackedByteArray = _serialize_helper(id_dynamic, pos_dynamic)
 	
 	var file: FileAccess = FileAccess.open(file_path, FileAccess.WRITE)
-	if file: file.store_buffer(bytes)
-	else: printerr(FileAccess.get_open_error())
+	
+	if file:
+		file.store_32(id_static.size())
+		file.store_buffer(bytes_static)
+		
+		file.store_32(id_dynamic.size())
+		file.store_buffer(bytes_dynamic)
+	else: 
+		printerr(FileAccess.get_open_error())
+	
 	file.close()
 
+func _serialize_helper(id_array: PackedInt64Array, pos_array: PackedVector2Array) -> PackedByteArray:
+	# Layout: [ID, ID, ID...] followed by [Pos, Pos, Pos...]
+	return id_array.to_byte_array() + pos_array.to_byte_array()
+
 static func deserialize(coords: Vector2i) -> obj_chunk:
-	var file: FileAccess = FileAccess.open(chunk_tile.get_entities_map(coords), FileAccess.READ)
-	if file == null:
+	var file_path: String = chunk_tile.get_entities_map(coords)
+	if not FileAccess.file_exists(file_path):
 		return obj_chunk.new()
 	
-	var size: int = file.get_length()
-	var data: PackedByteArray = file.get_buffer(size)
-	file.close()
-	
-	var stream: StreamPeerBuffer = StreamPeerBuffer.new()
-	stream.data_array = data
+	var data: PackedByteArray = FileAccess.get_file_as_bytes(file_path)
+	if data.size() == 0:
+		return obj_chunk.new()
 	
 	var chunk_objs: obj_chunk = obj_chunk.new()
-	chunk_objs.pos_static = []
-	chunk_objs.id_static = []
+	var offset: int = 0
 	
-	var count: int = size / 16
+	# --- READ STATIC ---
+	var static_count: int = data.decode_s32(offset)
+	offset += 4
 	
-	# Read pos_staticitions
-	for i: int in count:
-		var x: float = stream.get_float()
-		var y: float = stream.get_float()
-		chunk_objs.pos_static.append(Vector2(x, y))
+	chunk_objs.id_static.resize(static_count)
+	chunk_objs.pos_static.resize(static_count)
 	
-	# Read id_statics
-	for i: int in count:
-		var id_static_val: int = stream.get_64()
-		chunk_objs.id_static.append(id_static_val)
+	# 1. Read all IDs first
+	for i: int in range(static_count):
+		chunk_objs.id_static[i] = data.decode_s64(offset)
+		offset += 8 # Int64 is 8 bytes
+		
+	# 2. Read all Positions second
+	for i: int in range(static_count):
+		# Vector2 is 2 floats (4 bytes each) = 8 bytes total
+		chunk_objs.pos_static[i] = Vector2(data.decode_float(offset), data.decode_float(offset + 4))
+		offset += 8 
+	
+	var dynamic_count: int = data.decode_s32(offset)
+	offset += 4
+	
+	chunk_objs.id_dynamic.resize(dynamic_count)
+	chunk_objs.pos_dynamic.resize(dynamic_count)
+	
+	for i: int in range(dynamic_count):
+		chunk_objs.id_dynamic[i] = data.decode_s64(offset)
+		offset += 8
+	
+	for i: int in range(dynamic_count):
+		chunk_objs.pos_dynamic[i] = Vector2(data.decode_float(offset), data.decode_float(offset + 4))
+		offset += 8
 	
 	return chunk_objs

@@ -5,6 +5,7 @@ extends Node2D
 var curr_chunk: Vector2i = Vector2i(10000000,1000000)
 var obj_name: String
 var obj_id: int
+var is_dynamic: bool
 
 var start_global_pos: Vector2
 
@@ -13,7 +14,6 @@ var chunk_unloaded: bool = false
 func _enter_tree() -> void:
 	if !Engine.is_editor_hint():
 		print("No editor objects allowed in game")
-		
 		self.set_script(null)
 		queue_free()
 		return
@@ -29,7 +29,7 @@ func _ready() -> void:
 	
 	var original_pos: Variant = self.get_meta("original_pos", NAN)
 	if original_pos is Vector2:
-		print("Adding from chunk")
+		#print("Adding from chunk")
 		var vec_original_pos: Vector2 = original_pos as Vector2
 		self.global_position = vec_original_pos
 		start_global_pos = vec_original_pos
@@ -38,7 +38,7 @@ func _ready() -> void:
 			entity_signal.objects_per_chunk[curr_chunk] = {}
 		entity_signal.objects_per_chunk[curr_chunk][self] = true
 	else:
-		print("Adding from editor")
+		pass
 	
 	connect("tree_exiting", _remove_self_from_dict)
 
