@@ -15,6 +15,7 @@ var obj_script: Script
 
 func _enter_tree() -> void:
 	if !Engine.is_editor_hint():
+		Global.main_node = self
 		for c: Node in self.get_children():
 			if c.get_script() == obj_script:
 				c.queue_free()

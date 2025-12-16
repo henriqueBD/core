@@ -155,7 +155,9 @@ func _loader_process() -> void:
 			var terrain_mask: Image = chunk_tile.get_terrain_mask_from_data(terrain_data)
 			
 			#Load chunk entities
-			var instances: Array[Node2D] = []
+			var instances: Array[Array] = [[], []]
+			var instances_static: Array[Node2D]
+			var instances_dynamic: Array[Node2D]
 			var entities: obj_chunk = obj_chunk.deserialize(chunk_to_load_coords)
 			
 			if !entities.id_static.is_empty():
@@ -164,11 +166,21 @@ func _loader_process() -> void:
 						add_objects_editor(new_chunk_instance, entities)
 					else:
 						instances = _get_objects(entities)
+						instances_static = instances[0]
+						instances_dynamic = instances[1]
+						if !instances_dynamic.is_empty():
+							_convert_obj_pos_to_chunk_local(instances_dynamic, chunk_to_load_coords)
 				else:
 					printerr("Failed to get entities at chunk " + str(chunk_to_load_coords))
 			
 			call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
-			new_chunk_instance.initialize_deffered(chunk_to_load_coords, terrain_data, terrain_image, terrain_mask, instances)
+			new_chunk_instance.initialize_deffered(
+				chunk_to_load_coords, 
+				terrain_data, 
+				terrain_image, 
+				terrain_mask,
+				instances_static, 
+				instances_dynamic)
 		
 		#Unload chunks
 		if !_chunk_unload_queue.is_empty():
@@ -180,9 +192,6 @@ func _loader_process() -> void:
 				chunk_to_unload_coords == _chunk_unloading or
 				!_chunks_dict.has(chunk_to_unload_coords)):
 				continue
-			
-			if !Engine.is_editor_hint():
-				Global.chunk_pre_unload.emit(chunk_to_unload_coords)
 			
 			_chunk_unloading = chunk_to_unload_coords
 			var chunk_to_remove: chunk_tile = _chunks_dict[chunk_to_unload_coords]
@@ -393,6 +402,7 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 	_last_center_chunk = _curr_center_chunk
 	_chunks_buff_dict.clear()
 	
+	#Queuing load chunks
 	var editor_msg: String = "Loading: "
 	
 	for x_offset: int in range(_curr_center_chunk.x - _chunks_load_radius, _curr_center_chunk.x + _chunks_load_radius + 1):
@@ -413,12 +423,17 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 	if Engine.is_editor_hint(): 
 		if len(editor_msg) > 9: print(editor_msg)
 	
+	#Queuing unload chunks
 	editor_msg = "Unloading: "
 	
-	var to_remove: Array[Vector2i] = []
+	var to_remove: PackedVector2Array = []
 	for key: Vector2i in _chunks_dict.keys():
 		if not _chunks_buff_dict.has(key):
 			to_remove.append(key)
+	
+	if !Engine.is_editor_hint():
+		Global.chunk_pre_unload_bunch.emit(to_remove)
+	
 	for key: Vector2i in to_remove:
 		if _use_multithread:
 			_array_unload_mutex.lock()
@@ -459,9 +474,6 @@ func _unload_chunk(unloadCoords: Vector2i) -> void:
 	if !_chunks_dict.has(unloadCoords): return
 	var chunk_to_remove: chunk_tile = _chunks_dict[unloadCoords]
 	
-	if !Engine.is_editor_hint():
-		Global.chunk_pre_unload.emit(unloadCoords)
-	
 	if should_skip_save():
 		chunk_to_remove._terrain_really_changed = false
 		chunk_to_remove.changed_terrain = false
@@ -489,6 +501,13 @@ func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void
 		instance.set_meta("original_pos", instance_global_pos)
 		main_node.add_child(instance)
 		instance.owner = main_node
+	for i: int in range(len(entities.id_dynamic)):
+		var instance_scene: PackedScene = Entity_loader.load_scene(entities.id_dynamic[i])
+		var instance: Node2D = instance_scene.instantiate()
+		var instance_global_pos: Vector2 = original_chunk.to_global(entities.pos_dynamic[i])
+		instance.set_meta("original_pos", instance_global_pos)
+		main_node.add_child(instance)
+		instance.owner = main_node
 
 func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 	for i: int in range(len(objs.id_static)):
@@ -496,18 +515,35 @@ func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 		var instance: Node2D = tmp.instantiate()
 		instance.global_position = objs.pos_static[i]
 		chunk_to_add.add_child(instance)
+	for i: int in range(len(objs.id_dynamic)):
+		var tmp: PackedScene = Entity_loader.load_scene(objs.id_dynamic[i])
+		var instance: Node2D = tmp.instantiate()
+		instance.global_position = objs.pos_dynamic[i]
+		chunk_to_add.add_child(instance)
 	chunk_to_add.changed_entities = false
 
-func _get_objects(objs: obj_chunk) -> Array[Node2D]:
-	var instances: Array[Node2D] = []
+func _get_objects(objs: obj_chunk) -> Array[Array]:
+	var instances_static: Array[Node2D] = []
+	var instances_dynamic: Array[Node2D] = []
 	
 	for i: int in range(len(objs.id_static)):
 		var instance_scene: PackedScene = Entity_loader.load_scene(objs.id_static[i])
 		var instance: Node2D = instance_scene.instantiate()
 		instance.global_position = objs.pos_static[i]
-		instances.append(instance)
+		instances_static.append(instance)
 	
-	return instances
+	for i: int in range(len(objs.id_dynamic)):
+		var instance_scene: PackedScene = Entity_loader.load_scene(objs.id_dynamic[i])
+		var instance: Node2D = instance_scene.instantiate()
+		instance.global_position = objs.pos_dynamic[i]
+		instances_dynamic.append(instance)
+	
+	return [instances_static, instances_dynamic]
+
+func _convert_obj_pos_to_chunk_local(objs: Array[Node2D], chunk_coords: Vector2i) -> void:
+	var coords_converted: Vector2 = chunk_coords
+	for obj: Node2D in objs:
+		obj.global_position += coords_converted * Vector2(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE)
 
 static func get_chunk_path(chunk_coords: Vector2i) -> String:
 	return folderPath + str(chunk_coords.x) + "_" + str(chunk_coords.y) + ".dat"

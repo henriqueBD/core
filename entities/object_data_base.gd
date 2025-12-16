@@ -46,6 +46,7 @@ func serialize_and_save(coord_to_save: Vector2i) -> void:
 
 func _serialize_helper(id_array: PackedInt64Array, pos_array: PackedVector2Array) -> PackedByteArray:
 	# Layout: [ID, ID, ID...] followed by [Pos, Pos, Pos...]
+	if id_array.is_empty(): return []
 	return id_array.to_byte_array() + pos_array.to_byte_array()
 
 static func deserialize(coords: Vector2i) -> obj_chunk:

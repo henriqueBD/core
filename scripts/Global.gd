@@ -5,17 +5,16 @@ extends Node
 @warning_ignore_start("unused_signal")
 
 signal player_spawned
+
 signal terrain_break(area: Rect2i)
 
-##Careful, this signal will not be called by the main thread
 signal chunk_load(coordinate: Vector2i)
-
-##Careful, this signal will not be called by the main thread
-signal chunk_pre_unload(coordinate: Vector2i)
+signal chunk_pre_unload_bunch(coordinates: PackedVector2Array)
 
 @warning_ignore_restore("unused_signal")
 #endregion
 
+#region Constants
 const objs_path: String = "res://entities/"
 
 #Chunk
@@ -28,6 +27,7 @@ const NO_COLLISION_RAYCAST: float = -INF
 #layers
 const LAYER_CHUNK_TERRAIN: int = 0
 const LAYER_ENTITY: int = 1
+#endregion
 
 var main_node: Node
 var chunks: chunk_mng

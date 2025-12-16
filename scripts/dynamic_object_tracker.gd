@@ -2,7 +2,7 @@
 class_name DynamicObjTracker
 extends Node2D
 
-const HALF_CHUNK_SIDE: Vector2i = Vector2(Global.CHUNK_SIDE / 2, Global.CHUNK_SIDE / 2)
+const HALF_CHUNK_SIDE: Vector2 = Vector2(Global.CHUNK_SIDE / 2, Global.CHUNK_SIDE / 2)
 
 var _parent: Node2D
 var _world_bounds: Rect2
@@ -12,10 +12,9 @@ var _bigger_side: int
 func _ready() -> void:
 	_parent = get_parent()
 	if not _parent:
-		print("WHAT")
+		printerr("Failed to get parent")
 		return
-	_parent.reparent(Global.main_node)
-	Global.chunk_pre_unload.connect(_chunk_will_unload)
+	Global.chunk_pre_unload_bunch.connect(_chunk_will_unload)
 
 func define_bounds(world_bounds: Rect2) -> void:
 	_world_bounds = world_bounds
@@ -31,11 +30,13 @@ func _despawn() -> void:
 	_parent.set_process(false)
 	_parent.queue_free()
 
-func _chunk_will_unload(coord: Vector2i) -> void:
-	#fast check
-	coord += HALF_CHUNK_SIDE
-	if coord.distance_squared_to(_world_bounds.get_center()) > _bigger_side:
-		return
-	if !Global.chunks.is_rect_in_bounds(_world_bounds):
-		print("Entity out of bounds, despawning")
-		_despawn()
+func _chunk_will_unload(coords: PackedVector2Array) -> void:
+	for coord: Vector2 in coords:
+		#fast check
+		coord += HALF_CHUNK_SIDE
+		if coord.distance_squared_to(_world_bounds.get_center()) > _bigger_side:
+			continue
+		#slow check
+		if !Global.chunks.is_rect_in_bounds(_world_bounds):
+			print("Entity out of bounds, despawning")
+			_despawn()

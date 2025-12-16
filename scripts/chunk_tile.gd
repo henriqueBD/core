@@ -61,11 +61,17 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	entities = obj_chunk.deserialize(c)
 	return entities
 
-func initialize_deffered(key: Vector2i, decompressed_data: PackedByteArray, image: Image, mask: Image, instances: Array[Node2D]) -> void:
+func initialize_deffered(
+	key: Vector2i, decompressed_data: PackedByteArray, 
+	image: Image, mask: Image, instances_static: Array[Node2D], instances_dynamic: Array[Node2D]) -> void:
+	
 	var sprite: ImageTexture = ImageTexture.create_from_image(image)
-	call_deferred("_initialize_deffered_helper", key, decompressed_data, image, mask, sprite, instances)
+	call_deferred("_initialize_deffered_helper", key, decompressed_data, image, mask, sprite, instances_static, instances_dynamic)
 
-func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArray, image: Image, mask: Image, sprite: ImageTexture, instances: Array[Node2D]) -> void:
+func _initialize_deffered_helper(
+	key: Vector2i, decompressed_data: PackedByteArray, image: Image, 
+	mask: Image, sprite: ImageTexture, instances_static: Array[Node2D], instances_dynamic: Array[Node2D]) -> void:
+	
 	self.set_process(false)
 	
 	self.z_index = Globals.LAYER_CHUNK_TERRAIN
@@ -85,10 +91,13 @@ func _initialize_deffered_helper(key: Vector2i, decompressed_data: PackedByteArr
 		Vector2i(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE)
 	)
 	
-	for obj: Node2D in instances:
+	for obj: Node2D in instances_static:
 		##Fix later
 		self.add_child(obj)
 		obj.owner = self
+	
+	for obj: Node2D in instances_dynamic:
+		Global.main_node.add_child(obj)
 	
 	Global.chunk_load.emit(self)
 
