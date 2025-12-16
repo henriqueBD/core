@@ -5,7 +5,7 @@ const DESTROY_AFTER_TOUCH_SEC: float = 0.2
 const FALLING_SPEED: float = 120
 const BREAK_FORCE: int = 2
 
-static var TERRAIN_DESTROY_MASK: BitMap = TerrainBreaker.create_bitmap(load("res://entities/falling_spike_big/big_spike_destroy_mask.png"))
+static var TERRAIN_DESTROY_MASK: BitMap = TerrainBreaker.create_bitmap("res://entities/falling_spike_big/big_spike_destroy_mask.png")
 
 var _timer_self_destroy: float = 0.0
 var _timer_touch: float = 0.0

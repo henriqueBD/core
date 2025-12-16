@@ -43,6 +43,8 @@ var _delta_time: float
 var _should_try_tunnel: bool
 var _is_tunneling: bool
 
+var _terrain_break_mask: BitMap = TerrainBreaker.create_bitmap("res://assets/sprites/player_break_mask.png")
+
 func _enter_tree() -> void:
 	self.set_process(false)
 	Global.player_node = self

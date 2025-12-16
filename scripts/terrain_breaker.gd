@@ -6,9 +6,9 @@ var _last_break: Vector2
 var _distance_tolerance_squared: int
 var _mask: BitMap
 
-static func create_bitmap(img: Image) -> BitMap:
+static func create_bitmap(image_path: String) -> BitMap:
 	var res: BitMap = BitMap.new()
-	res.create_from_image_alpha(img)
+	res.create_from_image_alpha(Image.load_from_file(image_path))
 	return res
 
 func set_parameters(force: int, mask: BitMap, distance_tolerance: int = 1) -> void:

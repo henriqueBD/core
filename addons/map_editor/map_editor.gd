@@ -45,12 +45,8 @@ func _enter_tree():
 	print("Material dock added:", _material_dock)
 	var curr_scene := EditorInterface.get_edited_scene_root()
 	
-	if not curr_scene:
-		printerr("Fail 1")
-	else:
-		if curr_scene.name != TARGET_SCENE_PATH:
-			printerr("Fail 2")
-		else:
+	if curr_scene:
+		if curr_scene.name == TARGET_SCENE_PATH:
 			#_try_connect_signal()
 			_chunks = curr_scene.get_node_or_null("Chunk")
 			if not _chunks:
