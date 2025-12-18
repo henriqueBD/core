@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://c0bv2pmxcedyn"
+path="res://.godot/imported/player_break_up_mask.png-3e703f9d43e56cdcca015681c9d07524.image"
+
+[deps]
+
+source_file="res://assets/sprites/player_break_up_mask.png"
+dest_files=["res://.godot/imported/player_break_up_mask.png-3e703f9d43e56cdcca015681c9d07524.image"]
+
+[params]
+

@@ -2,11 +2,6 @@ class_name player_character
 extends Node2D
 
 var chunk: chunk_mng
-@onready var collisions: CollisionObj = $Collision
-@onready var state_machine: Node2D = $StateMachine
-@onready var animated_sprite_2d: AnimatedSprite2D = $AnimatedSprite2D
-
-@onready var editor_logic: Editor = $Editor_logic
 var is_editor_active: bool = false
 
 @export_group("Gravity")
@@ -28,11 +23,18 @@ var _coyote_time_ms: int
 
 @export_group("Break terrain")
 @export var _mining_level: int
+@export var _mining_offset: Vector2
+@export var _mining_offset_vertical: Vector2
 @export var _pickaxe_boost_force: float
 @export var _boost_break_time_ms: int
 @export var _tunelling_speed: float
 @export var _turning_speed_tunneling: float
 @export var _exit_speed: float
+
+@onready var collisions: CollisionObj = $Collision
+@onready var animated_sprite_2d: AnimatedSprite2D = $AnimatedSprite2D
+
+@onready var editor_logic: Editor = $Editor_logic
 
 var _curr_velocity: Vector2
 var _external_acell: Vector2
@@ -43,7 +45,9 @@ var _delta_time: float
 var _should_try_tunnel: bool
 var _is_tunneling: bool
 
-var _terrain_break_mask: BitMap = TerrainBreaker.create_bitmap("res://assets/sprites/player_break_mask.png")
+var _breaker_sideway: TerrainBreaker = TerrainBreaker.init("res://assets/sprites/player_break_mask.png", 0, 1, true)
+var _breaker_upward: TerrainBreaker = TerrainBreaker.init("res://assets/sprites/player_break_up_mask.png", 0, 1, false)
+var _breaker_downward: TerrainBreaker = TerrainBreaker.init("res://assets/sprites/player_break_down_mask.png", 0, 1, false)
 
 func _enter_tree() -> void:
 	self.set_process(false)
@@ -51,6 +55,7 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	chunk = Global.chunks
+	set_mining_level(_mining_level)
 	_coyote_time_ms = int(coyote_time * 1000)
 	collisions.check_collisions_while_deactivated = true
 	Global.player_spawned.emit()
@@ -110,6 +115,7 @@ enum STATE {
 	walk,
 	airborne,
 	jump,
+	swing,
 	tunnel,
 }
 
@@ -130,7 +136,7 @@ func change_state(new: STATE) -> void:
 		STATE.tunnel:
 			_tunnel_state_enter()
 			currState = _tunnel_state
-			
+
 func _log_state(state: STATE) -> void:
 	print(str(STATE.keys()[state]))
 
@@ -319,19 +325,36 @@ func _tunnel_state_leave(give_boost: bool = true) -> void:
 	_should_try_tunnel = false
 	collisions.activate()
 
+#endregion
+
 func _get_angle_input() -> float:
 	var input_dir: Vector2 = Vector2.ZERO
 	if _horizontal_input != 0.0: input_dir.x = sign(_horizontal_input)
 	if _vertical_input != 0.0: input_dir.y = sign(_vertical_input)
 	return input_dir.angle()
 
-#endregion
-
 func _check_looking_dir() -> void:
 	if _horizontal_input != 0:
 		animated_sprite_2d.flip_h = _horizontal_input < 0.0
 
 func hit_pickaxe() -> void:
+	if _vertical_input != 0:
+		if _vertical_input > 0:
+			_breaker_downward.break_terrain(collisions._bottom_left + _mining_offset_vertical)
+		else:
+			_breaker_upward.break_terrain(_breaker_upward.bottom_left_to_top_left(collisions._top_left + _mining_offset_vertical))
+	else:
+		if animated_sprite_2d.flip_h:
+			_breaker_sideway.break_terrain_flip_x(
+				_breaker_sideway.bottom_right_to_top_left(collisions._bottom_right + _mining_offset), 
+				true
+			)
+		else:
+			_breaker_sideway.break_terrain(
+				_breaker_sideway.bottom_left_to_top_left(collisions._bottom_left + _mining_offset)
+			)
+
+func hit_pickaxe_old() -> void:
 	var boost_dir: Vector2 = Vector2.ZERO
 	
 	if _horizontal_input != 0.0:
@@ -345,6 +368,17 @@ func hit_pickaxe() -> void:
 	_external_acell += boost_dir.normalized() * _pickaxe_boost_force
 	_boost_should_end_time = Time.get_ticks_msec() + _boost_break_time_ms
 	_should_try_tunnel = true
+
+func warn_low_fps() -> void:
+	var fps: float = Engine.get_frames_per_second()
+	if fps < 58:
+		print("<FPS DIP>: " + str(fps))
+
+func set_mining_level(new_level: int) -> void:
+	_mining_level = new_level
+	_breaker_upward.force = new_level
+	_breaker_sideway.force = new_level
+	_breaker_downward.force = new_level
 
 func teleport(new_world_coords: Vector2) -> void:
 	self.collisions.teleport(new_world_coords)

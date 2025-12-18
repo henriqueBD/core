@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://xut3bxebu43l"
+path="res://.godot/imported/player_break_down_mask.png-7f216564d79794e259de623d08c31faa.image"
+
+[deps]
+
+source_file="res://assets/sprites/player_break_down_mask.png"
+dest_files=["res://.godot/imported/player_break_down_mask.png-7f216564d79794e259de623d08c31faa.image"]
+
+[params]
+

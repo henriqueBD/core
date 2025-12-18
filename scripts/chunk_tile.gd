@@ -325,7 +325,7 @@ func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
 	grid_pos_start.x = max(0, grid_pos_start.x)
 	grid_pos_start.y = max(0, grid_pos_start.y)
 	
-	var grid_pos_end: Vector2i = world_to_grid(Vector2i(start) + mask.get_size())
+	var grid_pos_end: Vector2i = world_to_grid(start + Vector2(mask.get_size()))
 	grid_pos_end.x = min(Global.CHUNK_SIDE, grid_pos_end.x)
 	grid_pos_end.y = min(Global.CHUNK_SIDE, grid_pos_end.y)
 	

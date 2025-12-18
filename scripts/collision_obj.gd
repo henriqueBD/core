@@ -1,5 +1,7 @@
 class_name CollisionObj
-extends Node2D
+extends Area2D
+
+@export var collision_shape: CollisionShape2D
 
 var _global_bounds: Rect2
 
@@ -27,22 +29,21 @@ var _bottom_left: Vector2
 var _top_right: Vector2
 var _top_left: Vector2
 
-## Spacing between rays.
-#var _horizontal_spacing: float
-#var _vertical_spacing: float
-
 var _terrain: chunk_mng
-@onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var _parent: Node2D = self.get_parent()
 
 const no_collision: float = -INF
 
 func _ready() -> void:
 	_terrain = Global.chunks
-	assert(_terrain != null)
-	assert(collision_shape != null)
 	
-	change_rect(collision_shape.shape.get_rect())
+	if !collision_shape:
+		printerr("No collision shape found")
+		return
+	
+	var collision_shape_rect: Rect2 = collision_shape.shape.get_rect()
+	collision_shape_rect.position = collision_shape.to_global(collision_shape_rect.position)
+	change_rect(collision_shape_rect)
 	
 	#remove_child(collision_shape)
 	#collision_shape.queue_free()
@@ -85,9 +86,9 @@ func teleport(new_pos: Vector2) -> void:
 	_global_bounds.position += offset
 	_parent.global_position += offset
 
-func change_rect(new_rect: Rect2) -> void:
-	_global_bounds.size = round(new_rect.size)
-	_global_bounds.position = to_global(new_rect.position)
+func change_rect(new_global_rect: Rect2) -> void:
+	_global_bounds.size = round(new_global_rect.size)
+	_global_bounds.position = new_global_rect.position
 	_update_bounds()
 	_reset_collisions()
 

@@ -46,11 +46,12 @@ sprite_frames = SubResource("SpriteFrames_qlg0r")
 animation = &"idle"
 autoplay = "idle"
 
-[node name="Collision" type="Area2D" parent="."]
-position = Vector2(4, -10)
+[node name="Collision" type="Area2D" parent="." node_paths=PackedStringArray("collision_shape")]
 script = ExtResource("3_qhqgy")
+collision_shape = NodePath("CollisionShape2D")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Collision"]
+position = Vector2(5, -10)
 shape = SubResource("RectangleShape2D_qhqgy")
 
 [node name="StateMachine" type="Node2D" parent="."]

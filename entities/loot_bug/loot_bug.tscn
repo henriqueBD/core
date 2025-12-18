@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3 uid="uid://bnpq321cyrjfa"]
+
+[ext_resource type="Texture2D" uid="uid://docxvtss1rigb" path="res://entities/loot_bug/loot_bug.png" id="1_ow0or"]
+[ext_resource type="Script" uid="uid://bda5luxh0va1o" path="res://scripts/dynamic_object_tracker.gd" id="2_h716r"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ai1md"]
+size = Vector2(22, 10)
+
+[node name="LootBug" type="Area2D"]
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("1_ow0or")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 2)
+shape = SubResource("RectangleShape2D_ai1md")
+
+[node name="DynamicObjTracker" type="Node2D" parent="."]
+script = ExtResource("2_h716r")
+metadata/_custom_type_script = "uid://bda5luxh0va1o"

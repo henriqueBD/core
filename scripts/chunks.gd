@@ -160,18 +160,15 @@ func _loader_process() -> void:
 			var instances_dynamic: Array[Node2D]
 			var entities: obj_chunk = obj_chunk.deserialize(chunk_to_load_coords)
 			
-			if !entities.id_static.is_empty():
-				if entities:
-					if Engine.is_editor_hint():
-						add_objects_editor(new_chunk_instance, entities)
-					else:
-						instances = _get_objects(entities)
-						instances_static = instances[0]
-						instances_dynamic = instances[1]
-						if !instances_dynamic.is_empty():
-							_convert_obj_pos_to_chunk_local(instances_dynamic, chunk_to_load_coords)
+			if !entities.id_static.is_empty() or !entities.id_dynamic.is_empty():
+				if Engine.is_editor_hint():
+					add_objects_editor(new_chunk_instance, entities)
 				else:
-					printerr("Failed to get entities at chunk " + str(chunk_to_load_coords))
+					instances = _get_objects(entities)
+					instances_static = instances[0]
+					instances_dynamic = instances[1]
+					if !instances_dynamic.is_empty():
+						_convert_obj_pos_to_chunk_local(instances_dynamic, chunk_to_load_coords)
 			
 			call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
 			new_chunk_instance.initialize_deffered(
@@ -280,9 +277,9 @@ func is_rect_in_bounds(rect: Rect2) -> bool:
 
 #returns a data Vector2
 #X: the angle of the general direction of the tiles different that AIR in relation to the rect center,
-#	if no tiles returns NAN
+	#if no tiles returns NAN
 #Y: the angle of the general direction of the tiles that cannot be broken with the mining_force in relation to the rect center,
-#	if no tiles returns NAN
+	#if no tiles returns NAN
 func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
 	var chunk_to_eval: chunk_tile = world_to_chunk(area_rect.position)
 	return chunk_to_eval.eval_area(area_rect, mining_force)
@@ -455,7 +452,7 @@ func _load_chunk(load_coords: Vector2i) -> void:
 	
 	_instantiate_chunk(newChunk, load_coords)
 	
-	if entities.id_static.is_empty(): return
+	if entities.id_static.is_empty() and entities.id_dynamic.is_empty(): return
 	
 	if Engine.is_editor_hint():
 		add_objects_editor(newChunk, entities)

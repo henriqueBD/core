@@ -29,7 +29,7 @@ var _same_workplace: bool = true
 var _curr_chunk_selected: Vector2i
 var _chunks_selected: Array[Vector2i]
 
-var _color_to_tile_ID: Dictionary[Color, int]
+var _color_to_tile_ID: Dictionary[int, int]
 
 var _curr_obj_index: int
 var _obj_names: Array[String]
@@ -205,13 +205,36 @@ func _select_chunk(event: InputEvent, mouse_pos: Vector2) -> bool:
 
 func decode_and_load_chunks_from_image(file_name: String) -> void:
 	_color_to_tile_ID = {}
-	_color_to_tile_ID[Color.BLACK] = 0
-	for i: int in range(len(chunk_mng.tile_edge_colors)):
-		_color_to_tile_ID[chunk_mng.tile_edge_colors[i]] = i
 	
+	# --- NEW DICTIONARY GENERATION LOGIC ---
+	# Helper lambda to map a color AND its neighbors (rounding errors) to the same ID
+	var register_color = func(col: Color, id: int):
+		_color_to_tile_ID[col.to_abgr32()] = id
+		
+		# 2. The "Floor" conversion (Truncation)
+		# This catches your specific bug where 45.79 became 45 instead of 46
+		var col_floor = Color.from_rgba8(int(col.r * 255), int(col.g * 255), int(col.b * 255), int(col.a * 255))
+		_color_to_tile_ID[col_floor.to_abgr32()] = id
+		
+		# 3. The "Ceil" conversion (Safety net)
+		var col_ceil = Color8(int(ceil(col.r * 255)), int(ceil(col.g * 255)), int(ceil(col.b * 255)), int(ceil(col.a * 255)))
+		_color_to_tile_ID[col_ceil.to_abgr32()] = id
+
+	# Register Black (for empty space)
+	register_color.call(Color.BLACK, 0)
+	register_color.call(Color(0,0,0,0), 0) # Handle transparent black if needed
+
+	# Register your Palette
+	for i: int in range(len(chunk_mng.tile_edge_colors)):
+		register_color.call(chunk_mng.tile_edge_colors[i], i)
+	
+	print("Dictionary built with fuzzy keys: ", _color_to_tile_ID)
+	# ---------------------------------------
+
 	var path_tarrain := "C:/Users/Henrique/Desktop/buffer"
 	var image: Image = Image.load_from_file(path_tarrain + "/" + file_name)
-	file_name.trim_suffix(".png")
+	# ... (Rest of your existing function remains exactly the same)
+	file_name = file_name.replace(".png", "") # Note: 'trim_suffix' doesn't modify in place, fixed this line for you too
 	
 	var parts := file_name.split("=")
 	var v1_parts := parts[0].split("_")
@@ -225,12 +248,13 @@ func decode_and_load_chunks_from_image(file_name: String) -> void:
 	for x: int in range(min_chunk.x, max_chunk.x + 1):
 		for y: int in range(min_chunk.y, max_chunk.y + 1):
 			var curr_chunk: Vector2i = Vector2i(x, y)
+			# ... The rest of your code is fine ...
 			var offset_pixels: Vector2i = (curr_chunk - min_chunk) * Globals.CHUNK_SIDE
 			var chunk_rect: Image = image.get_region(
 				Rect2i((curr_chunk - min_chunk) * Globals.CHUNK_SIDE, 
 				Vector2i(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE))
 			)
-			encode_single_chunk(chunk_rect, curr_chunk)
+			decode_single_chunk(chunk_rect, curr_chunk)
 			chunks_to_reload.append(curr_chunk)
 	
 	_chunks._curr_center_chunk = Vector2i(0,0)
@@ -247,7 +271,7 @@ func decode_and_load_chunks_from_image(file_name: String) -> void:
 		reload_instance.tex = sprite
 		reload_instance.texture = sprite
 
-func encode_single_chunk(chunk_image: Image, coords: Vector2i) -> void:
+func decode_single_chunk(chunk_image: Image, coords: Vector2i) -> void:
 	if chunk_image.get_size() != Vector2i(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE):
 		printerr("Error in encode_single_chunk for " + str(coords))
 		return
@@ -257,9 +281,9 @@ func encode_single_chunk(chunk_image: Image, coords: Vector2i) -> void:
 	
 	for x: int in range(Global.CHUNK_SIDE):
 		for y: int in range(Global.CHUNK_SIDE):
-			var tile_id := _color_to_tile_ID.get(chunk_image.get_pixel(x, y), -1)
+			var tile_id := _color_to_tile_ID.get(chunk_image.get_pixel(x, y).to_abgr32(), -1)
 			if tile_id == -1:
-				printerr("Invalid tile at chunk " + str(coords) + str(Vector2(x, y)))
+				printerr("Invalid tile at chunk " + str(coords) + str(Vector2(x, y)) + str(chunk_image.get_pixel(x, y).to_abgr32()))
 				return
 			data[y * Global.CHUNK_SIDE + x] = tile_id
 	
