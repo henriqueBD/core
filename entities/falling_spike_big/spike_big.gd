@@ -5,9 +5,11 @@ const DESTROY_AFTER_TOUCH_SEC: float = 0.2
 const FALLING_SPEED: float = 120
 const BREAK_FORCE: int = 2
 
+static var _mask: BitMap = TerrainBreaker.create_bitmap("res://entities/falling_spike_big/big_spike_destroy_mask.png")
+
 var _timer_self_destroy: float = 0.0
 var _timer_touch: float = 0.0
-var _breaker: TerrainBreaker = TerrainBreaker.init("res://entities/falling_spike_big/big_spike_destroy_mask.png", BREAK_FORCE, 5, false)
+var _breaker: TerrainBreaker = TerrainBreaker.init([_mask], BREAK_FORCE, 5, false)
 var _chunks: chunk_mng
 
 @onready var player_detection: CollisionShape2D = $CollisionShape2D
@@ -19,7 +21,7 @@ func _ready() -> void:
 	_breaker.eval_force = 4
 	_chunks = Global.chunks
 	tracker.define_bounds(Rect2(global_position, _breaker._size))
-	set_process(false)
+	set_physics_process(false)
 
 func _on_area_entered(area: Area2D) -> void:
 	var parent: Node = area.owner
@@ -31,10 +33,10 @@ func _on_area_entered(area: Area2D) -> void:
 func _fall() -> void:
 	if player_detection:
 		player_detection.queue_free()
-		set_process(true)
+		set_physics_process(true)
 
 #Falling logic
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	_timer_self_destroy += delta
 	
 	if _timer_self_destroy > MAX_FALLING_SEC:

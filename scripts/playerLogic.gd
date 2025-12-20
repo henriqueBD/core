@@ -45,9 +45,9 @@ var _delta_time: float
 var _should_try_tunnel: bool
 var _is_tunneling: bool
 
-var _breaker_sideway: TerrainBreaker = TerrainBreaker.init("res://assets/sprites/player_break_mask.png", 0, 1, true)
-var _breaker_upward: TerrainBreaker = TerrainBreaker.init("res://assets/sprites/player_break_up_mask.png", 0, 1, false)
-var _breaker_downward: TerrainBreaker = TerrainBreaker.init("res://assets/sprites/player_break_down_mask.png", 0, 1, false)
+var _breaker_sideway: TerrainBreaker = TerrainBreaker.init(TerrainBreaker.create_bitmap_variations("res://assets/sprites/player_break_mask.png", 5), 0, true, 0)
+var _breaker_upward: TerrainBreaker = TerrainBreaker.init([TerrainBreaker.create_bitmap("res://assets/sprites/player_break_up_mask.png")], 0, false, 0)
+var _breaker_downward: TerrainBreaker = TerrainBreaker.init([TerrainBreaker.create_bitmap("res://assets/sprites/player_break_down_mask.png")], 0, false, 0)
 
 func _enter_tree() -> void:
 	self.set_process(false)
@@ -213,7 +213,6 @@ func _walk_state() -> void:
 	else:
 		_curr_velocity.x = max(_curr_velocity.x - (ground_speed_accel * _delta_time), -ground_speed_max)
 
-
 ## Jump
 func _jump_state() -> void:
 	_block_coyote_time()
@@ -345,12 +344,12 @@ func hit_pickaxe() -> void:
 			_breaker_upward.break_terrain(_breaker_upward.bottom_left_to_top_left(collisions._top_left + _mining_offset_vertical))
 	else:
 		if animated_sprite_2d.flip_h:
-			_breaker_sideway.break_terrain_flip_x(
+			_breaker_sideway.break_terrain_flip_x_random(
 				_breaker_sideway.bottom_right_to_top_left(collisions._bottom_right + _mining_offset), 
 				true
 			)
 		else:
-			_breaker_sideway.break_terrain(
+			_breaker_sideway.break_terrain_random(
 				_breaker_sideway.bottom_left_to_top_left(collisions._bottom_left + _mining_offset)
 			)
 
@@ -382,3 +381,8 @@ func set_mining_level(new_level: int) -> void:
 
 func teleport(new_world_coords: Vector2) -> void:
 	self.collisions.teleport(new_world_coords)
+
+func is_looking_foward() -> float:
+	if _curr_velocity.x != 0.0: return sign(_curr_velocity.x)
+	if animated_sprite_2d.flip_h: return -1.0
+	else: return 1.0

@@ -151,14 +151,28 @@ static func create_texture_from_terrain_data(terrain_data: PackedByteArray) -> I
 	
 	return terrain_img
 
-static func get_terrain_mask_from_data(terrain_data: PackedByteArray) -> Image:
-	var image_res: Image = Image.create_empty(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE, false, Image.FORMAT_L8)
+static func get_terrain_mask_from_data(terrain_data: PackedByteArray) -> BitMap:
+	var res: BitMap = BitMap.new()
+	res.create(Vector2i(Global.CHUNK_SIDE, Global.CHUNK_SIDE))
 	for x: int in range(Globals.CHUNK_SIDE):
 		for y: int in range(Globals.CHUNK_SIDE):
-			image_res.set_pixel(
-				x, y, Color.TRANSPARENT if terrain_data[y * Global.CHUNK_SIDE + x] == TILE_TYPE.AIR else Color.WHITE
+			res.set_bit(
+				x, y, terrain_data[y * Global.CHUNK_SIDE + x] == TILE_TYPE.AIR
 			)
-	return image_res
+	return res
+
+static func get_terrain_collision(terrain_data: PackedByteArray) -> Array[CollisionPolygon2D]:
+	var res: Array[CollisionPolygon2D] = []
+	var terrain_bit_map: BitMap = get_terrain_mask_from_data(terrain_data)
+	var vertices_arr: Array[PackedVector2Array] = terrain_bit_map.opaque_to_polygons(Rect2i(Vector2i.ZERO, terrain_bit_map.get_size()))
+	
+	for vertices: PackedVector2Array in vertices_arr:
+		var collision: CollisionPolygon2D = CollisionPolygon2D.new()
+		collision.polygon = vertices
+		res.append(collision)
+	
+	return res
+	
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos: Vector2 = to_local(world_pos)

@@ -13,6 +13,10 @@ script = ExtResource("1_lbhrr")
 position = Vector2(24, 22)
 zoom = Vector2(3, 3)
 script = ExtResource("1_lnu2h")
+y_offset = -30.0
+x_offset = 15.0
+motion_ease_walk = 0.5
+motion_ease_turn = 0.007
 
 [node name="Chunk" parent="." instance=ExtResource("2_yqjtg")]
 _chunks_load_radius_editor = 10

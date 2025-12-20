@@ -48,8 +48,6 @@ func _ready() -> void:
 	#remove_child(collision_shape)
 	#collision_shape.queue_free()
 
-## PUBLIC MOVEMENT METHOD ##
-
 func activate() -> void:
 	_active = true
 
@@ -174,13 +172,3 @@ func _reset_collisions() -> void:
 	below_collision = false
 	left_collision = false
 	right_collision = false
-
-#func _draw() -> void:
-	#_draw_point(_top_left)
-	#_draw_point(_top_right)
-	#_draw_point(_bottom_right)
-	#_draw_point(_bottom_left)
-	#
-#func _draw_point(point: Vector2) -> void:
-	#point = to_local(point)
-	#draw_line(point, Vector2(point.x, point.y+1), Color.RED, 2, false)
