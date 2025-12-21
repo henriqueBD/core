@@ -6,10 +6,16 @@ const chunk_scene: Resource = preload("res://scenes/Chunk_tile.tscn")
 
 const folderPath: String = "res://chunks/"
 const terrain_type_folder: String = "res://terrain_types/"
+const meta_unique_id: String = "unique_id"
 
 # Editor
 const emptyChunkPath: String = folderPath + "emptyChunk.dat"
 var emptyChunkTemplate: PackedByteArray
+
+static var tile_sprites: Array[Image]
+static var tile_edge_colors: Array[Color]
+static var tile_background_colors: Array[Color]
+static var tile_durability: PackedByteArray
 
 var _player: player_character
 
@@ -20,6 +26,7 @@ var _player: player_character
 var _chunks_load_radius: int
 
 var _chunks_dict: Dictionary[Vector2i, chunk_tile] = {}
+var _dynamic_entities_loaded: Dictionary[Vector3, bool] = {}
 var _unloaded_chunks_terrain_modified: Dictionary[Vector2i, PackedByteArray] = {}
 var _chunks_dict_mutex: Mutex = Mutex.new()
 var _chunks_buff_dict: Dictionary[Vector2i, bool]
@@ -39,11 +46,6 @@ var _chunk_unloading: Vector2i = Vector2i.MIN
 
 var _last_center_chunk: Vector2i = Vector2i(-1, -1)
 var _curr_center_chunk: Vector2i
-
-static var tile_sprites: Array[Image]
-static var tile_edge_colors: Array[Color]
-static var tile_background_colors: Array[Color]
-static var tile_durability: PackedByteArray
 
 var editor_stuff_active: bool = false
 
@@ -87,7 +89,7 @@ func _on_player_spawned() -> void:
 	self.set_process(true)
 	_player = Global.player_node
 	_load_chunk(world_to_chunk_key(_player.global_position))
-	_player.set_process(true)
+	_player.set_physics_process(true)
 
 func late_ready() -> void:
 	if !Engine.is_editor_hint():
@@ -152,7 +154,8 @@ func _loader_process() -> void:
 			assert(terrain_data.size() == Globals.CHUNK_SIZE)
 			
 			var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
-			var terrain_mask: Image = chunk_tile.get_terrain_mask_from_data(terrain_data)
+			var terrain_mask: BitMap = chunk_tile.get_terrain_mask_from_data(terrain_data)
+			var terrain_collision: Array[CollisionPolygon2D] = chunk_tile.get_terrain_collision(terrain_mask)
 			
 			#Load chunk entities
 			var instances: Array[Array] = [[], []]
@@ -175,6 +178,7 @@ func _loader_process() -> void:
 				chunk_to_load_coords, 
 				terrain_data, 
 				terrain_image, 
+				terrain_collision,
 				terrain_mask,
 				instances_static, 
 				instances_dynamic)
@@ -269,22 +273,30 @@ func world_to_chunk(world_pos: Vector2) -> chunk_tile:
 func is_rect_in_bounds(rect: Rect2) -> bool:
 	var start_chunk: Vector2i = world_to_chunk_key(rect.position)
 	var end_chunk: Vector2i = world_to_chunk_key(rect.position + rect.size)
-	
+	 
+	#TODO: (maybe) Poor performance at _chunk_unload_queue.has(Vector2i(x, y))
+	_array_unload_mutex.lock()
 	for x: int in range(start_chunk.x, end_chunk.x + 1):
 		for y: int in range(start_chunk.y, end_chunk.y + 1):
-			if !_chunks_dict.has(Vector2i(x, y)): return false
+			if _chunk_unload_queue.has(Vector2i(x, y)) or !_chunks_dict.has(Vector2i(x, y)):
+				_array_unload_mutex.unlock()
+				return false
+	_array_unload_mutex.unlock()
+	
 	return true
 
-#returns a data Vector2
-#X: the angle of the general direction of the tiles different that AIR in relation to the rect center,
-	#if no tiles returns NAN
-#Y: the angle of the general direction of the tiles that cannot be broken with the mining_force in relation to the rect center,
-	#if no tiles returns NAN
+##Returns Vector2
+##
+##X: the angle of the general direction of the tiles different that AIR in relation to the area center, 
+##if no tiles returns NAN
+##
+##Y: the angle of the general direction of the tiles that cannot be broken with the mining_force in relation to the area center, 
+##if no tiles returns NAN
 func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
 	var chunk_to_eval: chunk_tile = world_to_chunk(area_rect.position)
 	return chunk_to_eval.eval_area(area_rect, mining_force)
 
-#same result as eval_area but with mask
+##See eval_area for documentation
 func eval_area_mask(start_world: Vector2, mask: BitMap, mining_force: int) -> Vector2:
 	var chunk_to_eval: chunk_tile = world_to_chunk(start_world)
 	return chunk_to_eval.eval_area_mask(start_world, mask, mining_force)
@@ -317,11 +329,6 @@ func raycast_general_world(world_pos_start: Vector2, world_pos_end: Vector2) -> 
 
 #endregion
 
-func is_tile_air(world_point: Vector2) -> bool:
-	var point_key: Vector2i = world_to_chunk_key(world_point)
-	if !_chunks_dict.has(point_key): return true
-	var chunk_to_check: chunk_tile = _chunks_dict[point_key]
-	return chunk_to_check._get_tilev(chunk_to_check.world_to_grid(world_point)) == 0
 
 func change_tiles(world_rect: Rect2, type: chunk_tile.TILE_TYPE) -> void:
 	var chunk_top_left: Vector2i = world_to_chunk_key(world_rect.position)
@@ -519,6 +526,9 @@ func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 		chunk_to_add.add_child(instance)
 	chunk_to_add.changed_entities = false
 
+func unregister_dynamic_obj(unique_id: Vector3) -> void:
+	_dynamic_entities_loaded.erase(unique_id)
+
 func _get_objects(objs: obj_chunk) -> Array[Array]:
 	var instances_static: Array[Node2D] = []
 	var instances_dynamic: Array[Node2D] = []
@@ -530,9 +540,13 @@ func _get_objects(objs: obj_chunk) -> Array[Array]:
 		instances_static.append(instance)
 	
 	for i: int in range(len(objs.id_dynamic)):
+		var unique_id: Vector3 = Vector3(objs.pos_dynamic[i].x, objs.pos_dynamic[i].y, objs.id_dynamic[i])
+		if _dynamic_entities_loaded.has(unique_id): continue
+		_dynamic_entities_loaded[unique_id] = true
 		var instance_scene: PackedScene = Entity_loader.load_scene(objs.id_dynamic[i])
 		var instance: Node2D = instance_scene.instantiate()
 		instance.global_position = objs.pos_dynamic[i]
+		instance.set_meta(meta_unique_id, unique_id)
 		instances_dynamic.append(instance)
 	
 	return [instances_static, instances_dynamic]

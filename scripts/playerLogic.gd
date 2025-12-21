@@ -50,7 +50,7 @@ var _breaker_upward: TerrainBreaker = TerrainBreaker.init([TerrainBreaker.create
 var _breaker_downward: TerrainBreaker = TerrainBreaker.init([TerrainBreaker.create_bitmap("res://assets/sprites/player_break_down_mask.png")], 0, false, 0)
 
 func _enter_tree() -> void:
-	self.set_process(false)
+	self.set_physics_process(false)
 	Global.player_node = self
 
 func _ready() -> void:
@@ -63,7 +63,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	Global.player_node = null
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("togle_editor"):
 		if is_editor_active:
 			editor_logic.deactivate()

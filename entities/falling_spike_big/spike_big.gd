@@ -32,6 +32,7 @@ func _on_area_entered(area: Area2D) -> void:
 
 func _fall() -> void:
 	if player_detection:
+		print("Falling")
 		player_detection.queue_free()
 		set_physics_process(true)
 

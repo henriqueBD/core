@@ -2,8 +2,11 @@
 class_name chunk_tile
 extends Sprite2D
 
+static var _tile_sprites: Array[Image]
+static var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
+
 var img: Image
-var _terrain_mask: Image
+var _terrain_mask: BitMap
 var _global_bounds: Rect2i
 var tex: ImageTexture
 var coords: Vector2i = Vector2i(0,0)
@@ -13,8 +16,11 @@ var global_pos_cached: Vector2
 
 var entities: obj_chunk
 
-static var _tile_sprites: Array[Image]
-static var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
+var _polygons_child: Node2D
+
+var _breaker_thread: Thread
+var _breaker_mutex: Mutex = Mutex.new()
+var _breaker_poligons: Array[CollisionPolygon2D]
 
 enum TILE_TYPE { AIR, dirt, stone, gold, clovium, metal }
 
@@ -63,33 +69,43 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 
 func initialize_deffered(
 	key: Vector2i, decompressed_data: PackedByteArray, 
-	image: Image, mask: Image, instances_static: Array[Node2D], instances_dynamic: Array[Node2D]) -> void:
+	image: Image, collision: Array[CollisionPolygon2D], collision_mask: BitMap, 
+	instances_static: Array[Node2D], instances_dynamic: Array[Node2D]) -> void:
 	
 	var sprite: ImageTexture = ImageTexture.create_from_image(image)
-	call_deferred("_initialize_deffered_helper", key, decompressed_data, image, mask, sprite, instances_static, instances_dynamic)
+	call_deferred("_initialize_deffered_helper", key, decompressed_data, image, collision, collision_mask, sprite, instances_static, instances_dynamic)
 
 func _initialize_deffered_helper(
 	key: Vector2i, decompressed_data: PackedByteArray, image: Image, 
-	mask: Image, sprite: ImageTexture, instances_static: Array[Node2D], instances_dynamic: Array[Node2D]) -> void:
+	collision: Array[CollisionPolygon2D], collision_mask: BitMap, 
+	sprite: ImageTexture, instances_static: Array[Node2D], instances_dynamic: Array[Node2D]) -> void:
 	
-	self.set_process(false)
+	set_process(false)
 	
-	self.z_index = Globals.LAYER_CHUNK_TERRAIN
-	self.coords = key
+	z_index = Globals.LAYER_CHUNK_TERRAIN
+	coords = key
 	
-	self.data = decompressed_data
+	data = decompressed_data
 	assert(data.size() == Globals.CHUNK_SIZE)
 	
-	self.entities = obj_chunk.new()
-	self.global_position = Global.CHUNK_SIDE * key
-	self.img = image
-	self._terrain_mask = mask
-	self.tex = sprite
-	self.texture = sprite
-	self._global_bounds = Rect2i(
+	entities = obj_chunk.new()
+	global_position = Global.CHUNK_SIDE * key
+	img = image
+	tex = sprite
+	texture = sprite
+	
+	_terrain_mask = collision_mask
+	_breaker_thread = Thread.new()
+	
+	_global_bounds = Rect2i(
 		self.coords * Globals.CHUNK_SIDE,
 		Vector2i(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE)
 	)
+	
+	_polygons_child = Node2D.new()
+	add_child(_polygons_child)
+	for pol: CollisionPolygon2D in collision:
+		_polygons_child.add_child(pol)
 	
 	for obj: Node2D in instances_static:
 		##Fix later
@@ -157,14 +173,13 @@ static func get_terrain_mask_from_data(terrain_data: PackedByteArray) -> BitMap:
 	for x: int in range(Globals.CHUNK_SIDE):
 		for y: int in range(Globals.CHUNK_SIDE):
 			res.set_bit(
-				x, y, terrain_data[y * Global.CHUNK_SIDE + x] == TILE_TYPE.AIR
+				x, y, terrain_data[y * Global.CHUNK_SIDE + x] != TILE_TYPE.AIR
 			)
 	return res
 
-static func get_terrain_collision(terrain_data: PackedByteArray) -> Array[CollisionPolygon2D]:
+static func get_terrain_collision(terrain_data: BitMap) -> Array[CollisionPolygon2D]:
 	var res: Array[CollisionPolygon2D] = []
-	var terrain_bit_map: BitMap = get_terrain_mask_from_data(terrain_data)
-	var vertices_arr: Array[PackedVector2Array] = terrain_bit_map.opaque_to_polygons(Rect2i(Vector2i.ZERO, terrain_bit_map.get_size()))
+	var vertices_arr: Array[PackedVector2Array] = terrain_data.opaque_to_polygons(Rect2i(Vector2i.ZERO, terrain_data.get_size()))
 	
 	for vertices: PackedVector2Array in vertices_arr:
 		var collision: CollisionPolygon2D = CollisionPolygon2D.new()
@@ -172,7 +187,6 @@ static func get_terrain_collision(terrain_data: PackedByteArray) -> Array[Collis
 		res.append(collision)
 	
 	return res
-	
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos: Vector2 = to_local(world_pos)
@@ -206,6 +220,10 @@ func is_gridInt_pos_in_bounds(x_grid: int, y_grid: int) -> bool:
 
 func _set_tile(grid_x: int, grid_y: int, tile_type: TILE_TYPE) -> void:
 	data[grid_y * Global.CHUNK_SIDE + grid_x] = tile_type
+
+func _break_tile(grid_x: int, grid_y: int) -> void:
+	data[grid_y * Global.CHUNK_SIDE + grid_x] = TILE_TYPE.AIR
+	_terrain_mask.set_bit(grid_x, grid_y, false)
 
 func _set_tilev(grid_pos: Vector2i, tile_type: TILE_TYPE) -> void:
 	data[grid_pos.y * Global.CHUNK_SIDE + grid_pos.x] = tile_type
@@ -322,10 +340,11 @@ func break_tiles(destroy_rect_world: Rect2, mining_force: int) -> void:
 			if tile_to_break == TILE_TYPE.AIR or chunk_mng.tile_durability[tile_to_break] > mining_force:
 				continue
 			_terrain_really_changed = true
-			_set_tile(x_pos, y_pos, TILE_TYPE.AIR)
+			_break_tile(x_pos, y_pos)
 			img.set_pixel(x_pos, y_pos, chunk_mng.tile_background_colors[tile_to_break])
 	
 	if _terrain_really_changed:
+		_request_recalculate()
 		_recalculate_area(destroy_rect_world)
 		tex.update(img)
 		changed_terrain = true
@@ -351,16 +370,110 @@ func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
 				chunk_mng.tile_durability[tile_to_break] > mining_force):
 				continue
 			_terrain_really_changed = true
-			_set_tile(x_pos, y_pos, TILE_TYPE.AIR)
+			_break_tile(x_pos, y_pos)
 			img.set_pixel(x_pos, y_pos, chunk_mng.tile_background_colors[tile_to_break])
 	
 	if _terrain_really_changed:
+		_request_recalculate()
 		_recalculate_area(Rect2i(
 			start,
 			mask.get_size()
 		))
 		tex.update(img)
 		changed_terrain = true
+
+func _update_collisions_single_thread() -> void:
+	_polygons_child.queue_free()
+	_polygons_child = Node2D.new()
+	var vertices_arr: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size()))
+	
+	for vertices: PackedVector2Array in vertices_arr:
+		var collision: CollisionPolygon2D = CollisionPolygon2D.new()
+		collision.polygon = vertices
+		_polygons_child.add_child(collision)
+	
+	add_child(_polygons_child)
+
+#func _request_recalculate() -> void:
+	#if _breaker_thread.is_alive():
+		#_breaker_thread.wait_to_finish()
+	#_breaker_thread.start(_breaker_thread_process)
+#
+#func _breaker_thread_process() -> void:
+	#print("Breaking")
+	#var new_poligons: Array[CollisionPolygon2D]
+	#var vertices_arr: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size())) 
+	#for vertices: PackedVector2Array in vertices_arr:
+		#var collision: CollisionPolygon2D = CollisionPolygon2D.new()
+		#collision.polygon = vertices
+		#new_poligons.append(collision)
+	#
+	#_breaker_mutex.lock()
+	#_breaker_poligons = new_poligons
+	#_breaker_mutex.unlock()
+	#
+	#call_deferred("_breaker_deffered")
+#
+#func _breaker_deffered() -> void:
+	#_polygons_child.queue_free()
+	#_polygons_child = Node2D.new()
+	#_breaker_mutex.lock()
+	#for pol: CollisionPolygon2D in _breaker_poligons:
+		#_polygons_child.add_child(pol)
+	#_breaker_mutex.unlock()
+	#add_child(_polygons_child)
+
+var _is_calculating: bool = false
+var _needs_update: bool = false
+
+func _request_recalculate() -> void:
+	if _is_calculating:
+		_needs_update = true
+		return
+	
+	_start_thread()
+
+func _start_thread() -> void:
+	if _breaker_thread.is_started():
+		_breaker_thread.wait_to_finish()
+	
+	_is_calculating = true
+	_needs_update = false
+	_breaker_thread.start(_breaker_thread_process)
+
+func _breaker_thread_process() -> void:
+	print("Breaking")
+	var new_poligons: Array[CollisionPolygon2D]
+	var vertices_arr: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size())) 
+	for vertices: PackedVector2Array in vertices_arr:
+		var collision: CollisionPolygon2D = CollisionPolygon2D.new()
+		collision.polygon = vertices
+		new_poligons.append(collision)
+	
+	_breaker_mutex.lock()
+	_breaker_poligons = new_poligons
+	_breaker_mutex.unlock() 
+	
+	call_deferred("_breaker_deffered")
+
+func _breaker_deffered() -> void:
+	# Update the nodes
+	_polygons_child.queue_free()
+	_polygons_child = Node2D.new()
+	add_child(_polygons_child)
+	
+	_breaker_mutex.lock()
+	for pol: CollisionPolygon2D in _breaker_poligons:
+		_polygons_child.add_child(pol)
+	_breaker_mutex.unlock()
+	
+	# Finish the thread lifecycle
+	_breaker_thread.wait_to_finish()
+	_is_calculating = false
+	
+	# If a request came in while we were working, start again
+	if _needs_update:
+		_start_thread()
 
 #check chunks.eval area for more info
 func eval_area(global_rect: Rect2, mining_force: int) -> Vector2:
