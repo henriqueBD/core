@@ -24,10 +24,14 @@ save_on_exit = false
 
 [node name="Player" parent="." instance=ExtResource("3_lnu2h")]
 position = Vector2(-108, 583)
-gravity_amount = 1.7
-jump_force = 0.9
+gravity_amount = 2.8
+gravity_multiplier_falling = 3.15
+jump_force = 2.2
 coyote_time = 0.5
-air_speed_accel = 2.0
+air_speed_max = 3.3
+air_speed_accel = 9.0
+ground_speed_max = 4.0
+ground_speed_accel = 10.0
 _mining_level = 1
 _mining_offset = Vector2(0, 2)
 _mining_offset_vertical = Vector2(-4, 0)

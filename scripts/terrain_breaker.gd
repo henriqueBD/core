@@ -2,7 +2,6 @@ class_name TerrainBreaker
 extends Object
 
 var force: int
-var eval_force: int
 var distance_tolerance_squared: int
 
 var _last_break: Vector2
@@ -80,6 +79,9 @@ func set_parameters(break_force: int, mask: BitMap, distance_tolerance: int = 1)
 	distance_tolerance_squared = max(distance_tolerance * distance_tolerance, 1)
 
 func eval_area(global_top_left: Vector2) -> Vector2:
+	return Global.chunks.eval_area_mask(global_top_left, _mask_original, force)
+
+func eval_area_override_force(global_top_left: Vector2, eval_force: int) -> Vector2:
 	return Global.chunks.eval_area_mask(global_top_left, _mask_original, eval_force)
 
 #region break terrain

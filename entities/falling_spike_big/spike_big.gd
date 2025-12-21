@@ -18,7 +18,6 @@ var _chunks: chunk_mng
 func _ready() -> void:
 	var sprite_2d: Sprite2D = $Sprite2D
 	sprite_2d.z_index = Globals.LAYER_ENTITY
-	_breaker.eval_force = 4
 	_chunks = Global.chunks
 	tracker.define_bounds(Rect2(global_position, _breaker._size))
 	set_physics_process(false)
@@ -47,7 +46,7 @@ func _physics_process(delta: float) -> void:
 	global_position.y += FALLING_SPEED * delta
 	tracker.move(global_position)
 	
-	var res: Vector2 = _breaker.eval_area(global_position)
+	var res: Vector2 = _breaker.eval_area_override_force(global_position, 2)
 	
 	if _timer_touch > 0.0 or !is_nan(res.y):
 		_timer_touch += delta

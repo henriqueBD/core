@@ -2,6 +2,8 @@
 class_name chunk_tile
 extends Sprite2D
 
+const MAX_SKIPS: int = 5
+
 static var _tile_sprites: Array[Image]
 static var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
 
@@ -353,32 +355,38 @@ func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
 	_terrain_really_changed = false
 	
 	var grid_pos_start: Vector2i = world_to_grid(start)
+	
 	var image_origin_x: int = grid_pos_start.x
 	var image_origin_y: int = grid_pos_start.y
+	
 	grid_pos_start.x = max(0, grid_pos_start.x)
 	grid_pos_start.y = max(0, grid_pos_start.y)
 	
 	var grid_pos_end: Vector2i = world_to_grid(start + Vector2(mask.get_size()))
+	
 	grid_pos_end.x = min(Global.CHUNK_SIDE, grid_pos_end.x)
 	grid_pos_end.y = min(Global.CHUNK_SIDE, grid_pos_end.y)
+	
+	grid_pos_end.x = min(grid_pos_end.x, image_origin_x + mask.get_size().x)
+	grid_pos_end.y = min(grid_pos_end.y, image_origin_y + mask.get_size().y)
 	
 	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
 			var tile_to_break: TILE_TYPE = _get_tile(x_pos, y_pos)
+			
 			if (!mask.get_bit(x_pos - image_origin_x, y_pos - image_origin_y) or
 				tile_to_break == TILE_TYPE.AIR or 
 				chunk_mng.tile_durability[tile_to_break] > mining_force):
 				continue
+				
 			_terrain_really_changed = true
 			_break_tile(x_pos, y_pos)
 			img.set_pixel(x_pos, y_pos, chunk_mng.tile_background_colors[tile_to_break])
 	
 	if _terrain_really_changed:
 		_request_recalculate()
-		_recalculate_area(Rect2i(
-			start,
-			mask.get_size()
-		))
+		var affected_rect: Rect2i = Rect2i(grid_pos_start, grid_pos_end - grid_pos_start)
+		_recalculate_area(affected_rect)
 		tex.update(img)
 		changed_terrain = true
 
@@ -393,35 +401,6 @@ func _update_collisions_single_thread() -> void:
 		_polygons_child.add_child(collision)
 	
 	add_child(_polygons_child)
-
-#func _request_recalculate() -> void:
-	#if _breaker_thread.is_alive():
-		#_breaker_thread.wait_to_finish()
-	#_breaker_thread.start(_breaker_thread_process)
-#
-#func _breaker_thread_process() -> void:
-	#print("Breaking")
-	#var new_poligons: Array[CollisionPolygon2D]
-	#var vertices_arr: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size())) 
-	#for vertices: PackedVector2Array in vertices_arr:
-		#var collision: CollisionPolygon2D = CollisionPolygon2D.new()
-		#collision.polygon = vertices
-		#new_poligons.append(collision)
-	#
-	#_breaker_mutex.lock()
-	#_breaker_poligons = new_poligons
-	#_breaker_mutex.unlock()
-	#
-	#call_deferred("_breaker_deffered")
-#
-#func _breaker_deffered() -> void:
-	#_polygons_child.queue_free()
-	#_polygons_child = Node2D.new()
-	#_breaker_mutex.lock()
-	#for pol: CollisionPolygon2D in _breaker_poligons:
-		#_polygons_child.add_child(pol)
-	#_breaker_mutex.unlock()
-	#add_child(_polygons_child)
 
 var _is_calculating: bool = false
 var _needs_update: bool = false
@@ -438,22 +417,26 @@ func _start_thread() -> void:
 		_breaker_thread.wait_to_finish()
 	
 	_is_calculating = true
-	_needs_update = false
 	_breaker_thread.start(_breaker_thread_process)
 
 func _breaker_thread_process() -> void:
-	print("Breaking")
-	var new_poligons: Array[CollisionPolygon2D]
-	var vertices_arr: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size())) 
-	for vertices: PackedVector2Array in vertices_arr:
-		var collision: CollisionPolygon2D = CollisionPolygon2D.new()
-		collision.polygon = vertices
-		new_poligons.append(collision)
+	_needs_update = true
+	var skips: int = 0
+	while _needs_update and skips < MAX_SKIPS:
+		skips += 1
+		_needs_update = false
+		var new_poligons: Array[CollisionPolygon2D]
+		var vertices_arr: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size())) 
+		for vertices: PackedVector2Array in vertices_arr:
+			var collision: CollisionPolygon2D = CollisionPolygon2D.new()
+			collision.polygon = vertices
+			new_poligons.append(collision)
+		
+		_breaker_mutex.lock()
+		_breaker_poligons = new_poligons
+		_breaker_mutex.unlock()
 	
-	_breaker_mutex.lock()
-	_breaker_poligons = new_poligons
-	_breaker_mutex.unlock() 
-	
+	print("Breaking " + str(skips))
 	call_deferred("_breaker_deffered")
 
 func _breaker_deffered() -> void:
