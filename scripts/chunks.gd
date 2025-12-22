@@ -88,13 +88,12 @@ func _enter_tree() -> void:
 func _on_player_spawned() -> void:
 	self.set_process(true)
 	_player = Global.player_node
-	_load_chunk(world_to_chunk_key(_player.global_position))
+	_load_chunk_simple(world_to_chunk_key(_player.global_position))
 	_player.set_physics_process(true)
 
 func late_ready() -> void:
 	if !Engine.is_editor_hint():
 		_player = Global.player_node
-	
 	#if obj_id_to_name.is_empty():
 		#_load_obj_list()
 
@@ -143,45 +142,7 @@ func _loader_process() -> void:
 			#print("loading from thread " + str(chunk_to_load_coords))
 			_chunk_loading = chunk_to_load_coords
 			
-			var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
-			
-			#Load chunk terrain
-			var terrain_data: PackedByteArray
-			if _unloaded_chunks_terrain_modified.has(chunk_to_load_coords):
-				terrain_data = chunk_tile.decompress_chunk(_unloaded_chunks_terrain_modified[chunk_to_load_coords])
-			else:
-				terrain_data = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
-			assert(terrain_data.size() == Globals.CHUNK_SIZE)
-			
-			var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
-			var terrain_mask: BitMap = chunk_tile.get_terrain_mask_from_data(terrain_data)
-			var terrain_collision: Array[CollisionPolygon2D] = chunk_tile.get_terrain_collision(terrain_mask)
-			
-			#Load chunk entities
-			var instances: Array[Array] = [[], []]
-			var instances_static: Array[Node2D]
-			var instances_dynamic: Array[Node2D]
-			var entities: obj_chunk = obj_chunk.deserialize(chunk_to_load_coords)
-			
-			if !entities.id_static.is_empty() or !entities.id_dynamic.is_empty():
-				if Engine.is_editor_hint():
-					add_objects_editor(new_chunk_instance, entities)
-				else:
-					instances = _get_objects(entities)
-					instances_static = instances[0]
-					instances_dynamic = instances[1]
-					if !instances_dynamic.is_empty():
-						_convert_obj_pos_to_chunk_local(instances_dynamic, chunk_to_load_coords)
-			
-			call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
-			new_chunk_instance.initialize_deffered(
-				chunk_to_load_coords, 
-				terrain_data, 
-				terrain_image, 
-				terrain_collision,
-				terrain_mask,
-				instances_static, 
-				instances_dynamic)
+			_load_chunk_thread_safe(chunk_to_load_coords)
 		
 		#Unload chunks
 		if !_chunk_unload_queue.is_empty():
@@ -377,24 +338,25 @@ func break_tiles_mask(global_top_left: Vector2, mask: BitMap, mining_force: int)
 		global_top_left,
 		mask.get_size() as Vector2
 	)
-	var chunk_top_left: Vector2i = world_to_chunk_key(world_rect.position)
-	var chunk_top_right: Vector2i = world_to_chunk_key(
-		Vector2(world_rect.position.x + world_rect.size.x, world_rect.position.y))
-	var chunk_bottom_right: Vector2i = world_to_chunk_key(
-		Vector2(world_rect.position.x, world_rect.position.y + world_rect.size.y))
-	var chunk_bottom_left: Vector2i = world_to_chunk_key(
-		Vector2(world_rect.position.x + world_rect.size.x, world_rect.position.y + world_rect.size.y))
 	
-	if _chunks_dict.has(chunk_top_left):
-		_chunks_dict[chunk_top_left].break_tiles_mask(global_top_left, mask, mining_force)
-	if chunk_top_right != chunk_top_left and _chunks_dict.has(chunk_top_right):
-		_chunks_dict[chunk_top_right].break_tiles_mask(global_top_left, mask, mining_force)
-	if chunk_bottom_right != chunk_top_left and _chunks_dict.has(chunk_bottom_right):
-		_chunks_dict[chunk_bottom_right].break_tiles_mask(global_top_left, mask, mining_force)
-	if (chunk_bottom_left != chunk_top_right and 
-		chunk_bottom_left != chunk_bottom_right and 
-		_chunks_dict.has(chunk_bottom_left)):
-		_chunks_dict[chunk_bottom_left].break_tiles_mask(global_top_left, mask, mining_force)
+	var chunks: Rect2i = _get_rect_bounds(global_top_left, mask.get_size())
+	
+	for x: int in range(chunks.position.x, chunks.size.x + 1):
+		for y: int in range(chunks.position.y, chunks.size.y + 1):
+			var key: Vector2i = Vector2i(x, y)
+			if _chunks_dict.has(key):
+				_chunks_dict[key].break_tiles_mask(global_top_left, mask, mining_force)
+	
+	#if _chunks_dict.has(chunk_top_left):
+		#_chunks_dict[chunk_top_left].break_tiles_mask(global_top_left, mask, mining_force)
+	#if chunk_top_right != chunk_top_left and _chunks_dict.has(chunk_top_right):
+		#_chunks_dict[chunk_top_right].break_tiles_mask(global_top_left, mask, mining_force)
+	#if chunk_bottom_right != chunk_top_left and _chunks_dict.has(chunk_bottom_right):
+		#_chunks_dict[chunk_bottom_right].break_tiles_mask(global_top_left, mask, mining_force)
+	#if (chunk_bottom_left != chunk_top_right and 
+		#chunk_bottom_left != chunk_bottom_right and 
+		#_chunks_dict.has(chunk_bottom_left)):
+		#_chunks_dict[chunk_bottom_left].break_tiles_mask(global_top_left, mask, mining_force)
 	
 	Global.terrain_break.emit(world_rect)
 
@@ -420,7 +382,7 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 						_chunk_load_queue.append(chunk_to_check)
 						_array_load_mutex.unlock()
 					else:
-						_load_chunk(chunk_to_check)
+						_load_chunk_simple(chunk_to_check)
 					if Engine.is_editor_hint(): 
 						editor_msg += "({x}, {y}) ".format({"x": chunk_to_check.x, "y": chunk_to_check.y})
 	
@@ -451,9 +413,7 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 	if Engine.is_editor_hint(): 
 		if len(editor_msg) > 11: print(editor_msg)
 
-func _load_chunk(load_coords: Vector2i) -> void:
-	#print("loading " + str(load_coords))
-	
+func _load_chunk_simple(load_coords: Vector2i) -> void:
 	var newChunk: chunk_tile = chunk_scene.instantiate()
 	var entities: obj_chunk = newChunk.initialize(load_coords)
 	
@@ -465,6 +425,47 @@ func _load_chunk(load_coords: Vector2i) -> void:
 		add_objects_editor(newChunk, entities)
 	else:
 		add_objects(newChunk, entities)
+
+func _load_chunk_thread_safe(chunk_to_load_coords: Vector2i) -> void:
+	var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
+	
+	#Load chunk terrain
+	var terrain_data: PackedByteArray
+	if _unloaded_chunks_terrain_modified.has(chunk_to_load_coords):
+		terrain_data = chunk_tile.decompress_chunk(_unloaded_chunks_terrain_modified[chunk_to_load_coords])
+	else:
+		terrain_data = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
+	assert(terrain_data.size() == Globals.CHUNK_SIZE)
+	
+	var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
+	var terrain_mask: BitMap = chunk_tile.get_terrain_mask_from_data(terrain_data)
+	var terrain_collision: Array[CollisionPolygon2D] = chunk_tile.get_terrain_collision(terrain_mask)
+	
+	#Load chunk entities
+	var instances: Array[Array] = [[], []]
+	var instances_static: Array[Node2D]
+	var instances_dynamic: Array[Node2D]
+	var entities: obj_chunk = obj_chunk.deserialize(chunk_to_load_coords)
+	
+	if !entities.id_static.is_empty() or !entities.id_dynamic.is_empty():
+		if Engine.is_editor_hint():
+			add_objects_editor(new_chunk_instance, entities)
+		else:
+			instances = _get_objects(entities)
+			instances_static = instances[0]
+			instances_dynamic = instances[1]
+			if !instances_dynamic.is_empty():
+				_convert_obj_pos_to_chunk_local(instances_dynamic, chunk_to_load_coords)
+	
+	call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
+	new_chunk_instance.initialize_deffered(
+		chunk_to_load_coords, 
+		terrain_data, 
+		terrain_image, 
+		terrain_collision,
+		terrain_mask,
+		instances_static, 
+		instances_dynamic)
 
 func _instantiate_chunk(new_chunk: chunk_tile, new_chunk_coords: Vector2i) -> void:
 	add_child(new_chunk)
@@ -550,6 +551,15 @@ func _get_objects(objs: obj_chunk) -> Array[Array]:
 		instances_dynamic.append(instance)
 	
 	return [instances_static, instances_dynamic]
+
+##return.position = first chunk
+##
+##return.size = last chunk
+func _get_rect_bounds(start: Vector2, size: Vector2) -> Rect2i:
+	return Rect2i(
+		world_to_chunk_key(start),
+		world_to_chunk_key(start + size)
+	)
 
 func _convert_obj_pos_to_chunk_local(objs: Array[Node2D], chunk_coords: Vector2i) -> void:
 	var coords_converted: Vector2 = chunk_coords

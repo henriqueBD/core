@@ -3,6 +3,7 @@ class_name chunk_tile
 extends Sprite2D
 
 const MAX_SKIPS: int = 5
+const EPISILON: float = 2.0
 
 static var _tile_sprites: Array[Image]
 static var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
@@ -23,6 +24,10 @@ var _polygons_child: Node2D
 var _breaker_thread: Thread
 var _breaker_mutex: Mutex = Mutex.new()
 var _breaker_poligons: Array[CollisionPolygon2D]
+
+var _collision_RID: RID
+var _poligons_RID: Array[RID] = []
+var _collision_mutex: Mutex = Mutex.new()
 
 enum TILE_TYPE { AIR, dirt, stone, gold, clovium, metal }
 
@@ -99,15 +104,15 @@ func _initialize_deffered_helper(
 	_terrain_mask = collision_mask
 	_breaker_thread = Thread.new()
 	
+	_collision_RID = PhysicsServer2D.body_create()
+	_terrain_collision_update()
+	
 	_global_bounds = Rect2i(
 		self.coords * Globals.CHUNK_SIDE,
 		Vector2i(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE)
 	)
 	
-	_polygons_child = Node2D.new()
-	add_child(_polygons_child)
-	for pol: CollisionPolygon2D in collision:
-		_polygons_child.add_child(pol)
+	_collision_RID = PhysicsServer2D.body_create()
 	
 	for obj: Node2D in instances_static:
 		##Fix later
@@ -179,16 +184,43 @@ static func get_terrain_mask_from_data(terrain_data: PackedByteArray) -> BitMap:
 			)
 	return res
 
-static func get_terrain_collision(terrain_data: BitMap) -> Array[CollisionPolygon2D]:
-	var res: Array[CollisionPolygon2D] = []
-	var vertices_arr: Array[PackedVector2Array] = terrain_data.opaque_to_polygons(Rect2i(Vector2i.ZERO, terrain_data.get_size()))
+static func get_terrain_collision(_terrain_data: BitMap) -> Array[CollisionPolygon2D]:
+	return []
+	#var res: Array[CollisionPolygon2D] = []
+	#var vertices_arr: Array[PackedVector2Array] = terrain_data.opaque_to_polygons(Rect2i(Vector2i.ZERO, terrain_data.get_size()))
+	#
+	#for vertices: PackedVector2Array in vertices_arr:
+		#var collision: CollisionPolygon2D = CollisionPolygon2D.new()
+		#collision.polygon = vertices
+		#res.append(collision)
+
+func _terrain_collision_update() -> void:
+	var concave_array: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size()), EPISILON)
+	var new_polys_arr: Array[RID]
+	var active_polygon_size: int = _poligons_RID.size()
+	var i: int = 0
 	
-	for vertices: PackedVector2Array in vertices_arr:
-		var collision: CollisionPolygon2D = CollisionPolygon2D.new()
-		collision.polygon = vertices
-		res.append(collision)
+	for concave_poly: PackedVector2Array in concave_array:
+		for convex_poly: PackedVector2Array in Geometry2D.decompose_polygon_in_convex(concave_poly):
+			if i < active_polygon_size:
+				PhysicsServer2D.shape_set_data(_poligons_RID[i], convex_poly)
+			else:
+				var new_poly_RID: RID = PhysicsServer2D.convex_polygon_shape_create()
+				new_polys_arr.append(new_poly_RID)
+				PhysicsServer2D.shape_set_data(new_poly_RID, convex_poly)
+				PhysicsServer2D.body_add_shape(_collision_RID, new_poly_RID)
+			i += 1
 	
-	return res
+	if i < active_polygon_size:
+		for delete_i: int in range(i, active_polygon_size):
+			PhysicsServer2D.free_rid(_poligons_RID[delete_i])
+		_poligons_RID.resize(i)
+	else:
+		_collision_mutex.lock()
+		_poligons_RID.append_array(new_polys_arr)
+		_collision_mutex.unlock()
+	
+	call_deferred("queue_redraw")
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos: Vector2 = to_local(world_pos)
@@ -420,24 +452,26 @@ func _start_thread() -> void:
 	_breaker_thread.start(_breaker_thread_process)
 
 func _breaker_thread_process() -> void:
-	_needs_update = true
-	var skips: int = 0
-	while _needs_update and skips < MAX_SKIPS:
-		skips += 1
-		_needs_update = false
-		var new_poligons: Array[CollisionPolygon2D]
-		var vertices_arr: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size())) 
-		for vertices: PackedVector2Array in vertices_arr:
-			var collision: CollisionPolygon2D = CollisionPolygon2D.new()
-			collision.polygon = vertices
-			new_poligons.append(collision)
-		
-		_breaker_mutex.lock()
-		_breaker_poligons = new_poligons
-		_breaker_mutex.unlock()
-	
-	print("Breaking " + str(skips))
-	call_deferred("_breaker_deffered")
+	_terrain_collision_update()
+	_is_calculating = false
+	#_needs_update = true
+	#var skips: int = 0
+	#while _needs_update and skips < MAX_SKIPS:
+		#skips += 1
+		#_needs_update = false
+		#var new_poligons: Array[CollisionPolygon2D]
+		#var vertices_arr: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size())) 
+		#for vertices: PackedVector2Array in vertices_arr:
+			#var collision: CollisionPolygon2D = CollisionPolygon2D.new()
+			#collision.polygon = vertices
+			#new_poligons.append(collision)
+		#
+		#_breaker_mutex.lock()
+		#_breaker_poligons = new_poligons
+		#_breaker_mutex.unlock()
+	#
+	#print("Breaking " + str(skips))
+	#call_deferred("_breaker_deffered")
 
 func _breaker_deffered() -> void:
 	# Update the nodes
@@ -663,3 +697,10 @@ func clear_entity_backend() -> void:
 	entities.pos = []
 
 #endregion
+
+func _draw() -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 1
+	for rid: RID in _poligons_RID:
+		var poly_data: PackedVector2Array = PhysicsServer2D.shape_get_data(rid)
+		draw_colored_polygon(poly_data, Color.from_rgba8(rng.randi_range(0, 255), rng.randi_range(0, 255), rng.randi_range(0, 255), 168))
