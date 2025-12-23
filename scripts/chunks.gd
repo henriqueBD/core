@@ -254,8 +254,21 @@ func is_rect_in_bounds(rect: Rect2) -> bool:
 ##Y: the angle of the general direction of the tiles that cannot be broken with the mining_force in relation to the area center, 
 ##if no tiles returns NAN
 func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
-	var chunk_to_eval: chunk_tile = world_to_chunk(area_rect.position)
-	return chunk_to_eval.eval_area(area_rect, mining_force)
+	var chunks: Rect2i = _get_rect_bounds(area_rect.position, area_rect.size)
+	
+	var weaker_direction: Vector2 = Vector2.ZERO
+	var stronger_direction: Vector2 = Vector2.ZERO
+	
+	for x: int in range(chunks.position.x, chunks.size.x + 1):
+		for y: int in range(chunks.position.y, chunks.size.y + 1):
+			var key: Vector2i = Vector2i(x, y)
+			if _chunks_dict.has(key):
+				var eval_res: Vector4 = _chunks_dict[key].eval_area(area_rect, mining_force)
+				weaker_direction += Vector2(eval_res.x, eval_res.y)
+				stronger_direction += Vector2(eval_res.z, eval_res.w)
+	
+	return Vector2(NAN if weaker_direction == Vector2.ZERO else weaker_direction.angle(),
+					NAN if stronger_direction == Vector2.ZERO else stronger_direction.angle())
 
 ##See eval_area for documentation
 func eval_area_mask(start_world: Vector2, mask: BitMap, mining_force: int) -> Vector2:
@@ -346,17 +359,6 @@ func break_tiles_mask(global_top_left: Vector2, mask: BitMap, mining_force: int)
 			var key: Vector2i = Vector2i(x, y)
 			if _chunks_dict.has(key):
 				_chunks_dict[key].break_tiles_mask(global_top_left, mask, mining_force)
-	
-	#if _chunks_dict.has(chunk_top_left):
-		#_chunks_dict[chunk_top_left].break_tiles_mask(global_top_left, mask, mining_force)
-	#if chunk_top_right != chunk_top_left and _chunks_dict.has(chunk_top_right):
-		#_chunks_dict[chunk_top_right].break_tiles_mask(global_top_left, mask, mining_force)
-	#if chunk_bottom_right != chunk_top_left and _chunks_dict.has(chunk_bottom_right):
-		#_chunks_dict[chunk_bottom_right].break_tiles_mask(global_top_left, mask, mining_force)
-	#if (chunk_bottom_left != chunk_top_right and 
-		#chunk_bottom_left != chunk_bottom_right and 
-		#_chunks_dict.has(chunk_bottom_left)):
-		#_chunks_dict[chunk_bottom_left].break_tiles_mask(global_top_left, mask, mining_force)
 	
 	Global.terrain_break.emit(world_rect)
 

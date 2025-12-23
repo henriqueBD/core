@@ -21,9 +21,7 @@ var entities: obj_chunk
 
 var _polygons_child: Node2D
 
-var _breaker_thread: Thread
-var _breaker_mutex: Mutex = Mutex.new()
-var _breaker_poligons: Array[CollisionPolygon2D]
+var _breaker_thread: Thread = Thread.new()
 
 var _collision_RID: RID
 var _poligons_RID: Array[RID] = []
@@ -49,8 +47,8 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	
 	assert(data.size() == Globals.CHUNK_SIZE)
 	
-	self.position.x += c.x * Global.CHUNK_SIDE
-	self.position.y += c.y * Global.CHUNK_SIDE
+	position.x += c.x * Global.CHUNK_SIDE
+	position.y += c.y * Global.CHUNK_SIDE
 	
 	img = Image.create_empty(Global.CHUNK_SIDE, Global.CHUNK_SIDE, false, Image.FORMAT_RGBA8)
 	
@@ -68,7 +66,11 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 			)
 	
 	tex = ImageTexture.create_from_image(img)
-	self.texture = tex
+	texture = tex
+	
+	_collision_RID = PhysicsServer2D.body_create()
+	_terrain_mask = get_terrain_mask_from_data(data)
+	_terrain_collision_update()
 	
 	# Load entities
 	entities = obj_chunk.deserialize(c)
@@ -102,7 +104,6 @@ func _initialize_deffered_helper(
 	texture = sprite
 	
 	_terrain_mask = collision_mask
-	_breaker_thread = Thread.new()
 	
 	_collision_RID = PhysicsServer2D.body_create()
 	_terrain_collision_update()
@@ -357,36 +358,8 @@ func change_tiles(destroy_rect_world: Rect2, new_type: TILE_TYPE) -> void:
 	tex.update(img)
 	changed_terrain = true
 
-func break_tiles(destroy_rect_world: Rect2, mining_force: int) -> void:
+func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, mask: BitMap, mining_force: int) -> void:
 	_terrain_really_changed = false
-	
-	var grid_pos_start: Vector2i = world_to_grid(destroy_rect_world.position)
-	grid_pos_start.x = max(0, grid_pos_start.x)
-	grid_pos_start.y = max(0, grid_pos_start.y)
-	
-	var grid_pos_end: Vector2i = world_to_grid(destroy_rect_world.position + destroy_rect_world.size)
-	grid_pos_end.x = min(Global.CHUNK_SIDE, grid_pos_end.x)
-	grid_pos_end.y = min(Global.CHUNK_SIDE, grid_pos_end.y)
-	
-	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
-		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
-			var tile_to_break: TILE_TYPE = _get_tile(x_pos, y_pos)
-			if tile_to_break == TILE_TYPE.AIR or chunk_mng.tile_durability[tile_to_break] > mining_force:
-				continue
-			_terrain_really_changed = true
-			_break_tile(x_pos, y_pos)
-			img.set_pixel(x_pos, y_pos, chunk_mng.tile_background_colors[tile_to_break])
-	
-	if _terrain_really_changed:
-		_request_recalculate()
-		_recalculate_area(destroy_rect_world)
-		tex.update(img)
-		changed_terrain = true
-
-func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
-	_terrain_really_changed = false
-	
-	var grid_pos_start: Vector2i = world_to_grid(start)
 	
 	var image_origin_x: int = grid_pos_start.x
 	var image_origin_y: int = grid_pos_start.y
@@ -394,11 +367,10 @@ func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
 	grid_pos_start.x = max(0, grid_pos_start.x)
 	grid_pos_start.y = max(0, grid_pos_start.y)
 	
-	var grid_pos_end: Vector2i = world_to_grid(start + Vector2(mask.get_size()))
-	
 	grid_pos_end.x = min(Global.CHUNK_SIDE, grid_pos_end.x)
 	grid_pos_end.y = min(Global.CHUNK_SIDE, grid_pos_end.y)
 	
+	#??
 	grid_pos_end.x = min(grid_pos_end.x, image_origin_x + mask.get_size().x)
 	grid_pos_end.y = min(grid_pos_end.y, image_origin_y + mask.get_size().y)
 	
@@ -416,10 +388,8 @@ func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
 			img.set_pixel(x_pos, y_pos, chunk_mng.tile_background_colors[tile_to_break])
 	
 	if _terrain_really_changed:
-		_request_recalculate()
-		var affected_rect: Rect2i = Rect2i(grid_pos_start, grid_pos_end - grid_pos_start)
-		_recalculate_area(affected_rect)
-		tex.update(img)
+		_terrain_collision_update()
+		tex.update.call_deferred(img)
 		changed_terrain = true
 
 func _update_collisions_single_thread() -> void:
@@ -434,66 +404,17 @@ func _update_collisions_single_thread() -> void:
 	
 	add_child(_polygons_child)
 
-var _is_calculating: bool = false
-var _needs_update: bool = false
-
-func _request_recalculate() -> void:
-	if _is_calculating:
-		_needs_update = true
-		return
-	
-	_start_thread()
-
-func _start_thread() -> void:
+func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
 	if _breaker_thread.is_started():
 		_breaker_thread.wait_to_finish()
 	
-	_is_calculating = true
-	_breaker_thread.start(_breaker_thread_process)
-
-func _breaker_thread_process() -> void:
-	_terrain_collision_update()
-	_is_calculating = false
-	#_needs_update = true
-	#var skips: int = 0
-	#while _needs_update and skips < MAX_SKIPS:
-		#skips += 1
-		#_needs_update = false
-		#var new_poligons: Array[CollisionPolygon2D]
-		#var vertices_arr: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size())) 
-		#for vertices: PackedVector2Array in vertices_arr:
-			#var collision: CollisionPolygon2D = CollisionPolygon2D.new()
-			#collision.polygon = vertices
-			#new_poligons.append(collision)
-		#
-		#_breaker_mutex.lock()
-		#_breaker_poligons = new_poligons
-		#_breaker_mutex.unlock()
-	#
-	#print("Breaking " + str(skips))
-	#call_deferred("_breaker_deffered")
-
-func _breaker_deffered() -> void:
-	# Update the nodes
-	_polygons_child.queue_free()
-	_polygons_child = Node2D.new()
-	add_child(_polygons_child)
+	var grid_pos_start: Vector2i = world_to_grid(start)
+	var grid_pos_end: Vector2i = world_to_grid(start + Vector2(mask.get_size()))
 	
-	_breaker_mutex.lock()
-	for pol: CollisionPolygon2D in _breaker_poligons:
-		_polygons_child.add_child(pol)
-	_breaker_mutex.unlock()
-	
-	# Finish the thread lifecycle
-	_breaker_thread.wait_to_finish()
-	_is_calculating = false
-	
-	# If a request came in while we were working, start again
-	if _needs_update:
-		_start_thread()
+	_breaker_thread.start(_break_tiles_mask_helper.bind(grid_pos_start, grid_pos_end, mask, mining_force))
 
 #check chunks.eval area for more info
-func eval_area(global_rect: Rect2, mining_force: int) -> Vector2:
+func eval_area(global_rect: Rect2, mining_force: int) -> Vector4:
 	var tiles_dir: Vector2 = Vector2.ZERO
 	var stronger_tiles_dir: Vector2 = Vector2.ZERO
 	
@@ -501,18 +422,33 @@ func eval_area(global_rect: Rect2, mining_force: int) -> Vector2:
 	var grid_pos_end: Vector2i = world_to_grid(global_rect.position + global_rect.size)
 	var rect_center: Vector2 = (grid_pos_start + grid_pos_end) / 2.0
 	
+	grid_pos_start.x = max(0, grid_pos_start.x)
+	grid_pos_start.y = max(0, grid_pos_start.y)
+	
+	grid_pos_end.x = min(Global.CHUNK_SIDE, grid_pos_end.x)
+	grid_pos_end.y = min(Global.CHUNK_SIDE, grid_pos_end.y)
+	
+	#??
+	grid_pos_end.x = min(grid_pos_end.x, grid_pos_start.x + global_rect.size.x)
+	grid_pos_end.y = min(grid_pos_end.y, grid_pos_start.y + global_rect.size.y)
+	
+	
 	var tile_tmp: TILE_TYPE
 	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
-			tile_tmp = _get_tile_safe(x_pos, y_pos)
+			tile_tmp = _get_tile(x_pos, y_pos)
 			if tile_tmp != TILE_TYPE.AIR:
 				tiles_dir += Vector2(x_pos, y_pos) - rect_center
 				if chunk_mng.tile_durability[int(tile_tmp)] > mining_force:
 					stronger_tiles_dir += Vector2(x_pos, y_pos) - rect_center
 	
-	return Vector2(
-		NAN if tiles_dir == Vector2.ZERO else tiles_dir.angle(), 
-		NAN if stronger_tiles_dir == Vector2.ZERO else stronger_tiles_dir.angle())
+	return Vector4(tiles_dir.x, tiles_dir.y, stronger_tiles_dir.x, stronger_tiles_dir.y)
+	
+	#return Vector4(
+		#NAN if tiles_dir == Vector2.ZERO else tiles_dir.x,
+		#NAN if tiles_dir == Vector2.ZERO else tiles_dir.y,
+		#NAN if stronger_tiles_dir == Vector2.ZERO else stronger_tiles_dir.x,
+		#NAN if stronger_tiles_dir == Vector2.ZERO else stronger_tiles_dir.y)
 
 func eval_area_mask(start_world: Vector2i, mask: BitMap, mining_force: int) -> Vector2:
 	var tiles_dir: Vector2 = Vector2.ZERO
@@ -663,9 +599,6 @@ func should_save_terrain() -> bool:
 	return changed_terrain
 
 func unload() -> void:
-	#if changed_entities:
-		#print("Saving chunk entities: " + str(coords))
-		#_save_entities()
 	if changed_terrain:
 		print("Saving chunk terrain: " + str(coords))
 		_save_terrain()
@@ -681,20 +614,6 @@ func _save_terrain() -> void:
 
 static func compress_chunk(decompressed_data: PackedByteArray) -> PackedByteArray:
 	return decompressed_data.compress(Globals.CHUNK_COMPRESSION_METHOD)
-
-func add_sprite(sprite: Sprite2D) -> void:
-	if sprite:
-		self.add_child(sprite)
-		sprite.owner = self
-
-func add_entity_backend(id: int, global_pos: Vector2) -> void:
-	entities.id.append(id)
-	entities.pos.append(self.to_local(global_pos))
-	changed_entities = true
-
-func clear_entity_backend() -> void:
-	entities.id = []
-	entities.pos = []
 
 #endregion
 

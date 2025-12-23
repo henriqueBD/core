@@ -84,6 +84,9 @@ func eval_area(global_top_left: Vector2) -> Vector2:
 func eval_area_override_force(global_top_left: Vector2, eval_force: int) -> Vector2:
 	return Global.chunks.eval_area_mask(global_top_left, _mask_original, eval_force)
 
+func request_eval() -> void:
+	pass
+
 #region break terrain
 
 func break_terrain(global_coords_top_left: Vector2) -> void:

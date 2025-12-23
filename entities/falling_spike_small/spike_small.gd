@@ -51,7 +51,7 @@ func _process(delta: float) -> void:
 	if timer_touch > DESTROY_AFTER_TOUCH_SEC or !is_nan(res.y):
 		_destroy()
 	
-	chunks.break_tiles(destroy_rect, 1)
+	#chunks.break_tiles(destroy_rect, 1)
 
 func _destroy() -> void:
 	queue_free()
