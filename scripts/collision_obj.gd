@@ -1,5 +1,5 @@
 class_name CollisionObj
-extends Area2D
+extends CharacterBody2D
 
 @export var collision_shape: CollisionShape2D
 

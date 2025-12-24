@@ -69,6 +69,7 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	texture = tex
 	
 	_collision_RID = PhysicsServer2D.body_create()
+	_init_terrain_collision(_collision_RID)
 	_terrain_mask = get_terrain_mask_from_data(data)
 	_terrain_collision_update()
 	
@@ -106,6 +107,7 @@ func _initialize_deffered_helper(
 	_terrain_mask = collision_mask
 	
 	_collision_RID = PhysicsServer2D.body_create()
+	_init_terrain_collision(_collision_RID)
 	_terrain_collision_update()
 	
 	_global_bounds = Rect2i(
@@ -123,10 +125,16 @@ func _initialize_deffered_helper(
 	for obj: Node2D in instances_dynamic:
 		Global.main_node.add_child(obj)
 	
-	Global.chunk_load.emit(self)
+	Global.chunk_load.emit(coords)
+
+func _init_terrain_collision(body_rid: RID) -> void:
+	PhysicsServer2D.body_set_mode(body_rid, PhysicsServer2D.BODY_MODE_STATIC)
+	PhysicsServer2D.body_set_space(body_rid, get_world_2d().space)
+	PhysicsServer2D.body_set_state(body_rid, PhysicsServer2D.BODY_STATE_TRANSFORM, global_transform)
+	PhysicsServer2D.body_set_collision_layer(body_rid, 1)
+	PhysicsServer2D.body_set_collision_mask(body_rid, 1)
 
 static func get_bytes(coords_tmp: Vector2i) -> PackedByteArray:
-	
 	var targetName: String = chunk_mng.get_chunk_path(coords_tmp)
 	if FileAccess.file_exists(targetName):
 		return FileAccess.get_file_as_bytes(targetName)
@@ -196,6 +204,7 @@ static func get_terrain_collision(_terrain_data: BitMap) -> Array[CollisionPolyg
 		#res.append(collision)
 
 func _terrain_collision_update() -> void:
+	#opaque_to_polygons can fail (I guess)
 	var concave_array: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size()), EPISILON)
 	var new_polys_arr: Array[RID]
 	var active_polygon_size: int = _poligons_RID.size()
@@ -215,7 +224,9 @@ func _terrain_collision_update() -> void:
 	if i < active_polygon_size:
 		for delete_i: int in range(i, active_polygon_size):
 			PhysicsServer2D.free_rid(_poligons_RID[delete_i])
+		_collision_mutex.lock()
 		_poligons_RID.resize(i)
+		_collision_mutex.unlock()
 	else:
 		_collision_mutex.lock()
 		_poligons_RID.append_array(new_polys_arr)

@@ -71,6 +71,7 @@ func _enter_tree() -> void:
 		Global.player_spawned.connect(_on_player_spawned)
 		_use_multithread = true
 		Global.chunks = self
+		Global.chunk_load.connect(_on_chunk_loaded)
 	
 	create_empty_chunk_file()
 	emptyChunkTemplate = FileAccess.get_file_as_bytes(emptyChunkPath)
@@ -86,16 +87,25 @@ func _enter_tree() -> void:
 	if _use_multithread: _loader_start()
 
 func _on_player_spawned() -> void:
-	self.set_process(true)
+	set_process(true)
 	_player = Global.player_node
-	_load_chunk_simple(world_to_chunk_key(_player.global_position))
-	_player.set_physics_process(true)
+	#_load_chunk_simple(world_to_chunk_key(_player.global_position))
+	_curr_center_chunk = world_to_chunk_key(_player.global_position)
+	_array_load_mutex.lock()
+	_chunk_load_queue.append(_curr_center_chunk)
+	_array_load_mutex.unlock()
+	#_player.set_physics_process(true)
 
 func late_ready() -> void:
 	if !Engine.is_editor_hint():
 		_player = Global.player_node
 	#if obj_id_to_name.is_empty():
 		#_load_obj_list()
+
+func _on_chunk_loaded(load_coord: Vector2i) -> void:
+	if load_coord != _curr_center_chunk: return
+	Global.chunk_load.disconnect(_on_chunk_loaded)
+	_player.set_physics_process(true)
 
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
