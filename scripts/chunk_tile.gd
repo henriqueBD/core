@@ -3,7 +3,7 @@ class_name chunk_tile
 extends Sprite2D
 
 const MAX_SKIPS: int = 5
-const EPISILON: float = 2.0
+const EPSILON: float = 2.0
 
 static var _tile_sprites: Array[Image]
 static var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
@@ -130,7 +130,7 @@ func _initialize_deffered_helper(
 func _init_terrain_collision(body_rid: RID) -> void:
 	PhysicsServer2D.body_set_mode(body_rid, PhysicsServer2D.BODY_MODE_STATIC)
 	PhysicsServer2D.body_set_space(body_rid, get_world_2d().space)
-	PhysicsServer2D.body_set_state(body_rid, PhysicsServer2D.BODY_STATE_TRANSFORM, global_transform)
+	PhysicsServer2D.body_set_state(body_rid, PhysicsServer2D.BODY_STATE_TRANSFORM, transform)
 	PhysicsServer2D.body_set_collision_layer(body_rid, 1)
 	PhysicsServer2D.body_set_collision_mask(body_rid, 1)
 
@@ -203,9 +203,10 @@ static func get_terrain_collision(_terrain_data: BitMap) -> Array[CollisionPolyg
 		#collision.polygon = vertices
 		#res.append(collision)
 
+## Not working 100%: Some polygons are added without collision
 func _terrain_collision_update() -> void:
 	#opaque_to_polygons can fail (I guess)
-	var concave_array: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size()), EPISILON)
+	var concave_array: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size()), EPSILON)
 	var new_polys_arr: Array[RID]
 	var active_polygon_size: int = _poligons_RID.size()
 	var i: int = 0
@@ -231,8 +232,6 @@ func _terrain_collision_update() -> void:
 		_collision_mutex.lock()
 		_poligons_RID.append_array(new_polys_arr)
 		_collision_mutex.unlock()
-	
-	#call_deferred("queue_redraw")
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos: Vector2 = to_local(world_pos)
@@ -616,9 +615,15 @@ static func compress_chunk(decompressed_data: PackedByteArray) -> PackedByteArra
 
 #endregion
 
-func _draw() -> void:
-	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
-	rng.seed = 1
+#func _draw() -> void:
+	#var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	#rng.seed = 1
+	#for rid: RID in _poligons_RID:
+		#var poly_data: PackedFloat32Array = PhysicsServer2D.shape_get_data(rid)
+		#draw_colored_polygon(poly_data, Color.from_rgba8(rng.randi_range(0, 255), rng.randi_range(0, 255), rng.randi_range(0, 255), 100))
+
+func _exit_tree() -> void:
+	if Engine.is_editor_hint(): return
+	PhysicsServer2D.free_rid(_collision_RID)
 	for rid: RID in _poligons_RID:
-		var poly_data: PackedVector2Array = PhysicsServer2D.shape_get_data(rid)
-		draw_colored_polygon(poly_data, Color.from_rgba8(rng.randi_range(0, 255), rng.randi_range(0, 255), rng.randi_range(0, 255), 168))
+		PhysicsServer2D.free_rid(rid)
