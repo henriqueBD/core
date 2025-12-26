@@ -97,7 +97,7 @@ enum STATE {
 }
 
 func change_state(new: STATE) -> void:
-	_log_state(new)
+	#_log_state(new)
 	match new:
 		STATE.idle:
 			_curr_state = _idle_state

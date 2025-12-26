@@ -68,10 +68,10 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 	tex = ImageTexture.create_from_image(img)
 	texture = tex
 	
-	_collision_RID = PhysicsServer2D.body_create()
-	_init_terrain_collision(_collision_RID)
-	_terrain_mask = get_terrain_mask_from_data(data)
-	_terrain_collision_update()
+	#_collision_RID = PhysicsServer2D.body_create()
+	#_init_terrain_collision(_collision_RID)
+	#_terrain_mask = get_terrain_mask_from_data(data)
+	#_terrain_collision_update()
 	
 	# Load entities
 	entities = obj_chunk.deserialize(c)
@@ -232,7 +232,7 @@ func _terrain_collision_update() -> void:
 		_poligons_RID.append_array(new_polys_arr)
 		_collision_mutex.unlock()
 	
-	call_deferred("queue_redraw")
+	#call_deferred("queue_redraw")
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos: Vector2 = to_local(world_pos)
@@ -402,18 +402,6 @@ func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, 
 		_terrain_collision_update()
 		tex.update.call_deferred(img)
 		changed_terrain = true
-
-func _update_collisions_single_thread() -> void:
-	_polygons_child.queue_free()
-	_polygons_child = Node2D.new()
-	var vertices_arr: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size()))
-	
-	for vertices: PackedVector2Array in vertices_arr:
-		var collision: CollisionPolygon2D = CollisionPolygon2D.new()
-		collision.polygon = vertices
-		_polygons_child.add_child(collision)
-	
-	add_child(_polygons_child)
 
 func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
 	if _breaker_thread.is_started():

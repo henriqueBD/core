@@ -1,4 +1,4 @@
-extends Area2D
+extends Sprite2D
 
 const MAX_FALLING_SEC: float = 10
 const DESTROY_AFTER_TOUCH_SEC: float = 0.2
@@ -12,28 +12,25 @@ var _timer_touch: float = 0.0
 var _breaker: TerrainBreaker = TerrainBreaker.init([_mask], BREAK_FORCE, 5, false)
 var _chunks: chunk_mng
 
-@onready var player_detection: CollisionShape2D = $CollisionShape2D
 @onready var tracker: DynamicObjTracker = $Node2D
 
 func _ready() -> void:
-	var sprite_2d: Sprite2D = $Sprite2D
-	sprite_2d.z_index = Globals.LAYER_ENTITY
+	z_index = Globals.LAYER_ENTITY
+	var player_detection: PlayerDetection = $PlayerDetection
+	player_detection.response = _fall
+	player_detection.one_shot = true
 	_chunks = Global.chunks
 	tracker.define_bounds(Rect2(global_position, _breaker._size))
 	set_physics_process(false)
 
 func _on_area_entered(area: Area2D) -> void:
-	var parent: Node = area.owner
-	if !parent: return
-	
-	if parent == Global.player_node:
+	print(area.name)
+	if area.is_in_group("Player"):
 		_fall()
 
 func _fall() -> void:
-	if player_detection:
-		print("Falling")
-		player_detection.queue_free()
-		set_physics_process(true)
+	print("Falling")
+	set_physics_process(true)
 
 #Falling logic
 func _physics_process(delta: float) -> void:
