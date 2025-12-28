@@ -19,8 +19,6 @@ var global_pos_cached: Vector2
 
 var entities: obj_chunk
 
-var _polygons_child: Node2D
-
 var _breaker_thread: Thread = Thread.new()
 
 var _collision_RID: RID
@@ -106,9 +104,8 @@ func _initialize_deffered_helper(
 	
 	_terrain_mask = collision_mask
 	
-	_collision_RID = PhysicsServer2D.body_create()
-	_init_terrain_collision(_collision_RID)
-	_terrain_collision_update()
+	_collision_RID = _init_terrain_collision()
+	_terrain_collision_update(_collision_RID)
 	
 	_global_bounds = Rect2i(
 		self.coords * Globals.CHUNK_SIDE,
@@ -127,12 +124,14 @@ func _initialize_deffered_helper(
 	
 	Global.chunk_load.emit(coords)
 
-func _init_terrain_collision(body_rid: RID) -> void:
-	PhysicsServer2D.body_set_mode(body_rid, PhysicsServer2D.BODY_MODE_STATIC)
-	PhysicsServer2D.body_set_space(body_rid, get_world_2d().space)
-	PhysicsServer2D.body_set_state(body_rid, PhysicsServer2D.BODY_STATE_TRANSFORM, transform)
-	PhysicsServer2D.body_set_collision_layer(body_rid, 1)
-	PhysicsServer2D.body_set_collision_mask(body_rid, 1)
+func _init_terrain_collision() -> RID:
+	var res: RID = PhysicsServer2D.body_create()
+	PhysicsServer2D.body_set_mode(res, PhysicsServer2D.BODY_MODE_STATIC)
+	PhysicsServer2D.body_set_space(res, get_world_2d().space)
+	PhysicsServer2D.body_set_state(res, PhysicsServer2D.BODY_STATE_TRANSFORM, transform)
+	PhysicsServer2D.body_set_collision_layer(res, 1)
+	PhysicsServer2D.body_set_collision_mask(res, 1)
+	return res
 
 static func get_bytes(coords_tmp: Vector2i) -> PackedByteArray:
 	var targetName: String = chunk_mng.get_chunk_path(coords_tmp)
@@ -203,35 +202,54 @@ static func get_terrain_collision(_terrain_data: BitMap) -> Array[CollisionPolyg
 		#collision.polygon = vertices
 		#res.append(collision)
 
-## Not working 100%: Some polygons are added without collision
-func _terrain_collision_update() -> void:
-	#opaque_to_polygons can fail (I guess)
+func _terrain_collision_update(new_body: RID) -> void:
 	var concave_array: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size()), EPSILON)
-	var new_polys_arr: Array[RID]
-	var active_polygon_size: int = _poligons_RID.size()
-	var i: int = 0
-	
+	var new_convex_polys: Array[PackedVector2Array] = []
+
 	for concave_poly: PackedVector2Array in concave_array:
-		for convex_poly: PackedVector2Array in Geometry2D.decompose_polygon_in_convex(concave_poly):
-			if i < active_polygon_size:
-				PhysicsServer2D.shape_set_data(_poligons_RID[i], convex_poly)
-			else:
-				var new_poly_RID: RID = PhysicsServer2D.convex_polygon_shape_create()
-				new_polys_arr.append(new_poly_RID)
-				PhysicsServer2D.shape_set_data(new_poly_RID, convex_poly)
-				PhysicsServer2D.body_add_shape(_collision_RID, new_poly_RID)
-			i += 1
+		# Decompose into convex shapes
+		var decomposed: Array[PackedVector2Array] = Geometry2D.decompose_polygon_in_convex(concave_poly)
+		new_convex_polys.append_array(decomposed)
+
+	# 2. Locking (Optional but good practice if you access _poligons_RID elsewhere)
+	_collision_mutex.lock()
+
+	# 3. CLEANUP: Clear shapes from the body and free the old RIDs
+	PhysicsServer2D.body_clear_shapes(_collision_RID)
+
+	for old_rid: RID in _poligons_RID:
+		PhysicsServer2D.free_rid(old_rid)
+	_poligons_RID.clear()
 	
-	if i < active_polygon_size:
-		for delete_i: int in range(i, active_polygon_size):
-			PhysicsServer2D.free_rid(_poligons_RID[delete_i])
-		_collision_mutex.lock()
-		_poligons_RID.resize(i)
-		_collision_mutex.unlock()
-	else:
-		_collision_mutex.lock()
-		_poligons_RID.append_array(new_polys_arr)
-		_collision_mutex.unlock()
+	# 4. REBUILD: Create new RIDs and attach to body
+	for poly: PackedVector2Array in new_convex_polys:
+		var new_shape_rid: RID = PhysicsServer2D.convex_polygon_shape_create()
+		PhysicsServer2D.shape_set_data(new_shape_rid, poly)
+		PhysicsServer2D.body_add_shape(new_body, new_shape_rid)
+		_poligons_RID.append(new_shape_rid)
+	
+	_collision_RID = new_body
+	
+	_collision_mutex.unlock()
+
+func _create_new_physics_body_threaded() -> RID:
+	# A. Math: Geometry Calculation
+	var concave_array: Array[PackedVector2Array] = _terrain_mask.opaque_to_polygons(Rect2i(Vector2i.ZERO, _terrain_mask.get_size()), EPSILON)
+	
+	var new_body_rid: RID = _init_terrain_collision()
+	
+	# C. Physics Server: Create Shapes (Thread-safe)
+	for concave_poly: PackedVector2Array in concave_array:
+		# Decompose
+		var convex_polys: Array[PackedVector2Array] = Geometry2D.decompose_polygon_in_convex(concave_poly)
+		
+		# Create and add shapes immediately
+		for poly: PackedVector2Array in convex_polys:
+			var shape_rid: RID = PhysicsServer2D.convex_polygon_shape_create()
+			PhysicsServer2D.shape_set_data(shape_rid, poly)
+			PhysicsServer2D.body_add_shape(new_body_rid, shape_rid)
+			
+	return new_body_rid
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos: Vector2 = to_local(world_pos)
@@ -368,7 +386,18 @@ func change_tiles(destroy_rect_world: Rect2, new_type: TILE_TYPE) -> void:
 	tex.update(img)
 	changed_terrain = true
 
-func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, mask: BitMap, mining_force: int) -> void:
+func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
+	if _breaker_thread.is_started():
+		_breaker_thread.wait_to_finish()
+	
+	var grid_pos_start: Vector2i = world_to_grid(start)
+	var grid_pos_end: Vector2i = world_to_grid(start + Vector2(mask.get_size()))
+	
+	var new_body: RID = _init_terrain_collision()
+	
+	_breaker_thread.start(_break_tiles_mask_helper.bind(grid_pos_start, grid_pos_end, mask, mining_force, new_body))
+
+func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, mask: BitMap, mining_force: int, new_body: RID) -> void:
 	_terrain_really_changed = false
 	
 	var image_origin_x: int = grid_pos_start.x
@@ -398,18 +427,9 @@ func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, 
 			img.set_pixel(x_pos, y_pos, chunk_mng.tile_background_colors[tile_to_break])
 	
 	if _terrain_really_changed:
-		_terrain_collision_update()
+		_terrain_collision_update(new_body)
 		tex.update.call_deferred(img)
 		changed_terrain = true
-
-func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
-	if _breaker_thread.is_started():
-		_breaker_thread.wait_to_finish()
-	
-	var grid_pos_start: Vector2i = world_to_grid(start)
-	var grid_pos_end: Vector2i = world_to_grid(start + Vector2(mask.get_size()))
-	
-	_breaker_thread.start(_break_tiles_mask_helper.bind(grid_pos_start, grid_pos_end, mask, mining_force))
 
 #check chunks.eval area for more info
 func eval_area(global_rect: Rect2, mining_force: int) -> Vector4:
@@ -615,12 +635,12 @@ static func compress_chunk(decompressed_data: PackedByteArray) -> PackedByteArra
 
 #endregion
 
-#func _draw() -> void:
-	#var rng: RandomNumberGenerator = RandomNumberGenerator.new()
-	#rng.seed = 1
-	#for rid: RID in _poligons_RID:
-		#var poly_data: PackedFloat32Array = PhysicsServer2D.shape_get_data(rid)
-		#draw_colored_polygon(poly_data, Color.from_rgba8(rng.randi_range(0, 255), rng.randi_range(0, 255), rng.randi_range(0, 255), 100))
+func _draw() -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 1
+	for rid: RID in _poligons_RID:
+		var poly_data: PackedVector2Array = PhysicsServer2D.shape_get_data(rid)
+		draw_colored_polygon(poly_data, Color.from_rgba8(rng.randi_range(0, 255), rng.randi_range(0, 255), rng.randi_range(0, 255), 100))
 
 func _exit_tree() -> void:
 	if Engine.is_editor_hint(): return

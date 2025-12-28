@@ -12,7 +12,7 @@ var _timer_touch: float = 0.0
 var _breaker: TerrainBreaker = TerrainBreaker.init([_mask], BREAK_FORCE, 5, false)
 var _chunks: chunk_mng
 
-@onready var tracker: DynamicObjTracker = $Node2D
+@onready var tracker: DynamicObjTracker = $DynamicObjTracker
 
 func _ready() -> void:
 	z_index = Globals.LAYER_ENTITY

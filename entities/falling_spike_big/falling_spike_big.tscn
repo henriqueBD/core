@@ -17,9 +17,6 @@ texture = SubResource("AtlasTexture_7im7g")
 centered = false
 script = ExtResource("1_p05s2")
 
-[node name="Node2D" type="Node2D" parent="."]
-script = ExtResource("3_x7xi0")
-
 [node name="PlayerDetection" type="Area2D" parent="."]
 script = ExtResource("4_7im7g")
 metadata/_custom_type_script = "uid://c4big2omgxqak"
@@ -27,3 +24,7 @@ metadata/_custom_type_script = "uid://c4big2omgxqak"
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
 position = Vector2(37.5, 83.5)
 shape = SubResource("RectangleShape2D_p05s2")
+
+[node name="DynamicObjTracker" type="Node2D" parent="."]
+script = ExtResource("3_x7xi0")
+metadata/_custom_type_script = "uid://bda5luxh0va1o"

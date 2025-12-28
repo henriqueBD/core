@@ -15,8 +15,12 @@ func _ready() -> void:
 	if not _parent:
 		printerr("Failed to get parent")
 		return
-	_UID = _parent.get_meta(chunk_mng.meta_unique_id)
-	print(_UID)
+	var UID_tmp: Variant = _parent.get_meta(chunk_mng.meta_unique_id)
+	if UID_tmp == null:
+		printerr("Failed to get UID for obj: " + _parent.name)
+		queue_free()
+		return
+	_UID = UID_tmp as Vector3
 	Global.chunk_pre_unload_bunch.connect(_chunk_will_unload)
 
 func define_bounds(world_bounds: Rect2) -> void:

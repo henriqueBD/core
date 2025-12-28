@@ -48,7 +48,6 @@ func _try_connect(name_signal: String, fn: Callable) -> void:
 func _on_child_entered(node: Node) -> void:
 	if node.name in EXCLUDE: return
 	var is_dynamic: bool = _is_dynamic_obj(node)
-	_lobotomize_node(node)
 	var node_name: String = node.scene_file_path.get_file().trim_suffix(".tscn")
 	print(node_name)
 	if node_name.is_empty(): return
@@ -113,5 +112,5 @@ func _on_chunk_child_leaving(node: Node) -> void:
 	objects_per_chunk.erase(chunk.coords)
 	
 	if !save: return
-	print("Saving chunk entities: " + str(chunk.coords))
+	print("Saving chunk %s entities: (%s static / %s dynamic)" % [str(chunk.coords), str(objects_to_save.pos_static.size()), str(objects_to_save.pos_dynamic.size())])
 	objects_to_save.serialize_and_save(chunk.coords)

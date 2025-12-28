@@ -23,7 +23,7 @@ _chunks_load_radius_editor = 10
 save_on_exit = false
 
 [node name="Player" parent="." instance=ExtResource("3_lnu2h")]
-position = Vector2(-108, 583)
+position = Vector2(-155, 615)
 gravity_amount = 130.0
 gravity_multiplier_falling = 2.0
 jump_force = 105.0
@@ -42,4 +42,4 @@ _turning_speed_tunneling = 4.5
 _exit_speed = 3.0
 
 [node name="PlayerSpawner" parent="." instance=ExtResource("7_0tnpc")]
-position = Vector2(-171, 622)
+position = Vector2(-688, 585)
