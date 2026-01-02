@@ -32,3 +32,5 @@ const LAYER_ENTITY: int = 1
 var main_node: Node
 var chunks: chunk_mng
 var player_node: Node2D
+
+var gravity: float = 200

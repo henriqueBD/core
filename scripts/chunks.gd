@@ -523,6 +523,7 @@ func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void
 		var instance: Node2D = instance_scene.instantiate()
 		var instance_global_pos: Vector2 = original_chunk.to_global(entities.pos_dynamic[i])
 		instance.set_meta("original_pos", instance_global_pos)
+		instance.set_meta("is_dynamic", true)
 		main_node.add_child(instance)
 		instance.owner = main_node
 

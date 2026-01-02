@@ -40,9 +40,7 @@ var _horizontal_input: float
 var _vertical_input: float
 var _delta_time: float
 var _curr_state: Callable = _idle_state
-
-var _should_try_tunnel: bool
-var _is_tunneling: bool
+var _bounds: Rect2
 
 var _breaker_sideway: TerrainBreaker = TerrainBreaker.init(TerrainBreaker.create_bitmap_variations("res://assets/sprites/player_break_mask.png", 5), 0, true, 0)
 var _breaker_upward: TerrainBreaker = TerrainBreaker.init([TerrainBreaker.create_bitmap("res://assets/sprites/player_break_up_mask.png")], 0, false, 0)
@@ -232,68 +230,6 @@ func _airborne_state() -> void:
 	else:
 		velocity.y += gravity_amount * _delta_time
 
-
-## TUNNEL
-#var _boost_should_end_time: int
-#var curr_angle: float
-#
-#func _tunnel_state_enter() -> void:
-	#collisions.deactivate()
-	#_external_acell = Vector2.ZERO
-	#_is_tunneling = true
-	#var input_dir: Vector2 = Vector2.ZERO
-	#if _horizontal_input != 0.0: input_dir.x = sign(_horizontal_input)
-	#if _vertical_input != 0.0: input_dir.y = sign(_vertical_input)
-	#curr_angle = input_dir.angle()
-#
-#func _tunnel_state() -> void:
-	#if _boost_should_end_time < Time.get_ticks_msec():
-		#_tunnel_state_leave()
-		#change_state(STATE.airborne)
-		#return
-	#
-	#var input_dir: Vector2 = Vector2.ZERO
-	#
-	#if _horizontal_input != 0.0:
-		#input_dir.x = sign(_horizontal_input)
-	#if _vertical_input != 0.0:
-		#input_dir.y = sign(_vertical_input)
-	#
-	#if input_dir != Vector2.ZERO:
-		#curr_angle = lerp_angle(curr_angle, input_dir.angle(), _turning_speed_tunneling * _delta_time)
-		#velocity = Vector2.from_angle(curr_angle) * _tunelling_speed * _delta_time
-	#
-	##check eval_area (chunk_tile) for the return description
-	#var tiles_direction: Vector2 = chunk.eval_area(collisions._global_bounds.grow(3), _mining_level)
-	#
-	#if !is_nan(tiles_direction.y):
-		#_tunnel_state_leave(false)
-		#change_state(STATE.airborne)
-		#return
-	#if !is_nan(tiles_direction.x):
-		#if abs(angle_difference(curr_angle, tiles_direction.x)) < 2.9671:
-			#chunk.break_tiles(collisions._global_bounds.grow(1), _mining_level)
-		#else:
-			#_tunnel_state_leave()
-			#change_state(STATE.airborne)
-			#return
-	#else:
-		#_tunnel_state_leave()
-		#change_state(STATE.airborne)
-		#return
-#
-#func _tunnel_state_leave(give_boost: bool = true) -> void:
-	#chunk.break_tiles(collisions._global_bounds.grow(3), _mining_level)
-	#velocity = Vector2.ZERO
-	#
-	#if give_boost: _external_acell = Vector2.from_angle(curr_angle) * _exit_speed
-	#else: _external_acell = Vector2.ZERO
-	#
-	#_boost_should_end_time = -1
-	#_is_tunneling = false
-	#_should_try_tunnel = false
-	#collisions.activate()
-
 #endregion
 
 func _get_angle_input() -> float:
@@ -307,42 +243,19 @@ func _check_looking_dir() -> void:
 		animated_sprite_2d.flip_h = _horizontal_input < 0.0
 
 func hit_pickaxe() -> void:
-	pass
-	#if _vertical_input != 0:
-		#if _vertical_input > 0:
-			#_breaker_downward.break_terrain(collisions._bottom_left + _mining_offset_vertical)
-		#else:
-			#_breaker_upward.break_terrain(_breaker_upward.bottom_left_to_top_left(collisions._top_left + _mining_offset_vertical))
-	#else:
-		#if animated_sprite_2d.flip_h:
-			#_breaker_sideway.break_terrain_flip_x_random(
-				#_breaker_sideway.bottom_right_to_top_left(collisions._bottom_right + _mining_offset), 
-				#true
-			#)
-		#else:
-			#_breaker_sideway.break_terrain_random(
-				#_breaker_sideway.bottom_left_to_top_left(collisions._bottom_left + _mining_offset)
-			#)
-
-#func hit_pickaxe_old() -> void:
-	#var boost_dir: Vector2 = Vector2.ZERO
-	#
-	#if _horizontal_input != 0.0:
-		#boost_dir.x = sign(_horizontal_input)
-	#if _vertical_input != 0.0:
-		#boost_dir.y = sign(_vertical_input)
-	#
-	#if boost_dir == Vector2.ZERO:
-		#boost_dir.x = -1.0 if animated_sprite_2d.flip_h else 1.0
-	#
-	#_external_acell += boost_dir.normalized() * _pickaxe_boost_force
-	#_boost_should_end_time = Time.get_ticks_msec() + _boost_break_time_ms
-	#_should_try_tunnel = true
-
-func warn_low_fps() -> void:
-	var fps: float = Engine.get_frames_per_second()
-	if fps < 58:
-		print("<FPS DIP>: " + str(fps))
+	var collision_shape_2d: CollisionShape2D = $CollisionShape2D
+	var rect: Rect2 = collision_shape_2d.shape.get_rect()
+	rect.position = collision_shape_2d.to_global(rect.position)
+	if _vertical_input != 0:
+		if _vertical_input > 0:
+			_breaker_downward.break_terrain(Vector2(rect.position.x, rect.position.y + rect.size.y) + _mining_offset_vertical)
+		else:
+			_breaker_upward.break_terrain(rect.position + _mining_offset_vertical)
+	else:
+		if animated_sprite_2d.flip_h:
+			_breaker_sideway.break_terrain_flip_x_random(Vector2(rect.position - _mining_offset), true)
+		else:
+			_breaker_sideway.break_terrain_random(rect.position + _mining_offset)
 
 func set_mining_level(new_level: int) -> void:
 	_mining_level = new_level

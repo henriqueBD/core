@@ -17,8 +17,7 @@ var _chunks: chunk_mng
 func _ready() -> void:
 	z_index = Globals.LAYER_ENTITY
 	var player_detection: PlayerDetection = $PlayerDetection
-	player_detection.response = _fall
-	player_detection.one_shot = true
+	player_detection.set_response_enter(_fall, true)
 	_chunks = Global.chunks
 	tracker.define_bounds(Rect2(global_position, _breaker._size))
 	set_physics_process(false)

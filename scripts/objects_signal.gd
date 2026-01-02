@@ -47,7 +47,7 @@ func _try_connect(name_signal: String, fn: Callable) -> void:
 
 func _on_child_entered(node: Node) -> void:
 	if node.name in EXCLUDE: return
-	var is_dynamic: bool = _is_dynamic_obj(node)
+	var is_dynamic: bool = node.has_meta("is_dynamic") or _is_dynamic_obj(node)
 	var node_name: String = node.scene_file_path.get_file().trim_suffix(".tscn")
 	print(node_name)
 	if node_name.is_empty(): return

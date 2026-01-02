@@ -15,8 +15,7 @@ var chunks: chunk_mng
 @onready var player_detection: PlayerDetection = $PlayerDetection
 
 func _ready() -> void:
-	player_detection.response = _fall
-	player_detection.one_shot = true
+	player_detection.set_response_enter(_fall, true)
 	chunks = Global.chunks
 	set_process(false)
 

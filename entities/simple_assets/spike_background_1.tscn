@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3 uid="uid://bglspcb1135qx"]
+
+[ext_resource type="Texture2D" uid="uid://drlhxmqvkoixv" path="res://assets/sprites/fungi_cave_assets.png" id="1_f52ks"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_imfgb"]
+atlas = ExtResource("1_f52ks")
+region = Rect2(67, 206, 26, 50)
+
+[node name="Node2D" type="Sprite2D"]
+z_index = -3
+texture = SubResource("AtlasTexture_imfgb")
