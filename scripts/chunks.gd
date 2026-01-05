@@ -27,7 +27,7 @@ var _chunks_load_radius: int
 
 var _chunks_dict: Dictionary[Vector2i, chunk_tile] = {}
 var _dynamic_entities_loaded: Dictionary[Vector3, bool] = {}
-var _unloaded_chunks_terrain_modified: Dictionary[Vector2i, PackedByteArray] = {}
+var _unloaded_chunks_terrain_modified: Dictionary[Vector2i, BitMap] = {}
 var _chunks_dict_mutex: Mutex = Mutex.new()
 var _chunks_buff_dict: Dictionary[Vector2i, bool]
 
@@ -137,6 +137,7 @@ func _reset_queues() -> void:
 
 # Multithreaded chunk loading and unloading:
 func _loader_process() -> void:
+	##TODO: Sleep or stop the thread to avoid wasting 100% of this core
 	while _loader_continue:
 		# Load chunks
 		if !_chunk_load_queue.is_empty():
@@ -169,8 +170,7 @@ func _loader_process() -> void:
 			var chunk_to_remove: chunk_tile = _chunks_dict[chunk_to_unload_coords]
 			
 			if chunk_to_remove.should_save_terrain():
-				var terrain_compressed: PackedByteArray = chunk_tile.compress_chunk(chunk_to_remove.data)
-				_unloaded_chunks_terrain_modified[chunk_to_unload_coords] = terrain_compressed
+				_unloaded_chunks_terrain_modified[chunk_to_unload_coords] = chunk_to_remove._terrain_mask
 			
 			if should_skip_save():
 				chunk_to_remove._terrain_really_changed = false
@@ -285,33 +285,10 @@ func eval_area_mask(start_world: Vector2, mask: BitMap, mining_force: int) -> Ve
 	var chunk_to_eval: chunk_tile = world_to_chunk(start_world)
 	return chunk_to_eval.eval_area_mask(start_world, mask, mining_force)
 
-#region Ray Cast
-
-# Returns the global Y coord if there is collision, else returns -INF
-func raycast_down_world(world_pos: Vector2, dist: int) -> float:
-	var chunk_point: chunk_tile = world_to_chunk(world_pos)
-	return chunk_point.rayCastDown(world_pos, dist)
-
-# Returns the global Y coord if there is collision, else returns -INF
-func raycast_up_world(world_pos: Vector2, dist: int) -> float:
-	var chunk_point: chunk_tile = world_to_chunk(world_pos)
-	return chunk_point.rayCastUp(world_pos, dist)
-
-# Returns the global X coord if there is collision, else returns -INF
-func raycast_left_world(world_pos: Vector2, dist: int) -> float:
-	var chunk_point: chunk_tile = world_to_chunk(world_pos)
-	return chunk_point.rayCastLeft(world_pos, dist)
-
-# Returns the global X coord if there is collision, else returns -INF
-func raycast_right_world(world_pos: Vector2, dist: int) -> float:
-	var chunk_point: chunk_tile = world_to_chunk(world_pos)
-	return chunk_point.rayCastRight(world_pos, dist)
-
-func raycast_general_world(world_pos_start: Vector2, world_pos_end: Vector2) -> float:
-	var chunk_point: chunk_tile = world_to_chunk(world_pos_start)
-	return chunk_point.ray_cast_general(world_pos_start, world_pos_end)
-
-#endregion
+##See eval_area for documentation
+func eval_break_area_mask(start_world: Vector2, mask: BitMap, mining_force: int, eval_force: int, callback: Callable) -> void:
+	var chunk_to_eval: chunk_tile = world_to_chunk(start_world)
+	chunk_to_eval.eval_break_tiles_mask(start_world, mask, mining_force, eval_force, callback)
 
 
 func change_tiles(world_rect: Rect2, type: chunk_tile.TILE_TYPE) -> void:
@@ -442,14 +419,14 @@ func _load_chunk_thread_safe(chunk_to_load_coords: Vector2i) -> void:
 	var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
 	
 	#Load chunk terrain
-	var terrain_data: PackedByteArray
-	if _unloaded_chunks_terrain_modified.has(chunk_to_load_coords):
-		terrain_data = chunk_tile.decompress_chunk(_unloaded_chunks_terrain_modified[chunk_to_load_coords])
-	else:
-		terrain_data = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
+	var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
 	assert(terrain_data.size() == Globals.CHUNK_SIZE)
 	
-	var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
+	var previous_terrain_mask: BitMap = _unloaded_chunks_terrain_modified.get(chunk_to_load_coords)
+	#if _unloaded_chunks_terrain_modified.has(chunk_to_load_coords):
+		#pass
+	
+	var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data, previous_terrain_mask)
 	var terrain_mask: BitMap = chunk_tile.get_terrain_mask_from_data(terrain_data)
 	var terrain_collision: Array[CollisionPolygon2D] = chunk_tile.get_terrain_collision(terrain_mask)
 	

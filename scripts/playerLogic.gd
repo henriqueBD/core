@@ -25,12 +25,7 @@ var _coyote_time_ms: int
 @export var _mining_level: int
 @export var _mining_offset: Vector2
 @export var _mining_offset_vertical: Vector2
-@export var _pickaxe_boost_force: float
-@export var _boost_break_time_ms: int
-@export var _tunelling_speed: float
-@export var _turning_speed_tunneling: float
-@export var _exit_speed: float
-
+@export var _swing_cooldown: float
 @onready var animated_sprite_2d: AnimatedSprite2D = $AnimatedSprite2D
 
 @onready var editor_logic: Editor = $Editor_logic
@@ -39,12 +34,17 @@ var _external_acell: Vector2
 var _horizontal_input: float
 var _vertical_input: float
 var _delta_time: float
-var _curr_state: Callable = _idle_state
+var _curr_state: STATE = STATE.idle
+var _curr_state_callable: Callable = _idle_state
 var _bounds: Rect2
+var _last_press_jump: int = -1
 
 var _breaker_sideway: TerrainBreaker = TerrainBreaker.init(TerrainBreaker.create_bitmap_variations("res://assets/sprites/player_break_mask.png", 5), 0, true, 0)
 var _breaker_upward: TerrainBreaker = TerrainBreaker.init([TerrainBreaker.create_bitmap("res://assets/sprites/player_break_up_mask.png")], 0, false, 0)
 var _breaker_downward: TerrainBreaker = TerrainBreaker.init([TerrainBreaker.create_bitmap("res://assets/sprites/player_break_down_mask.png")], 0, false, 0)
+
+var _is_swinging: bool = false
+var _last_swing_input: int
 
 func _enter_tree() -> void:
 	self.set_physics_process(false)
@@ -69,10 +69,10 @@ func _physics_process(delta: float) -> void:
 	
 	_gather_input()
 	
-	_curr_state.call()
+	_curr_state_callable.call()
 	
-	if Input.is_action_just_pressed("hit_pickaxe"):
-		hit_pickaxe()
+	#if Input.is_action_just_pressed("hit_pickaxe"):
+		#hit_pickaxe()
 	
 	_external_acell = _external_acell.move_toward(
 		Vector2.ZERO, external_acceleration_fallof * delta)
@@ -94,18 +94,29 @@ enum STATE {
 	swing,
 }
 
-func change_state(new: STATE) -> void:
+func change_state(new_state: STATE) -> void:
 	#_log_state(new)
-	match new:
+	
+	match _curr_state:
 		STATE.idle:
-			_curr_state = _idle_state
+			_idle_state_leave()
+		STATE.airborne:
+			_airborne_state_leave()
+	
+	_curr_state = new_state
+	
+	match new_state:
+		STATE.idle:
+			_curr_state_callable = _idle_state
 			_idle_state_enter()
 		STATE.walk:
-			_curr_state = _walk_state
+			_curr_state_callable = _walk_state
+			_walk_state_enter()
 		STATE.airborne:
-			_curr_state = _airborne_state
+			_curr_state_callable = _airborne_state
+			_airborne_state_enter()
 		STATE.jump:
-			_curr_state = _jump_state
+			_curr_state_callable = _jump_state
 
 func _log_state(state: STATE) -> void:
 	print(str(STATE.keys()[state]))
@@ -115,16 +126,18 @@ func _log_state(state: STATE) -> void:
 #region States
 
 func _no_clip_state() -> void:
-	velocity = Vector2.ZERO
 	velocity.x += _horizontal_input
 	velocity.y += _vertical_input
 
-## Idle
-var last_press_jump: int = -1
+# ---------- Idle ----------
 
 func _idle_state_enter() -> void:
-	if Time.get_ticks_msec() - last_press_jump < inverse_coyote_time * 1000:
-		last_press_jump = -1
+	if !is_on_floor():
+		change_state(STATE.airborne)
+		return
+	
+	if Time.get_ticks_msec() - _last_press_jump < inverse_coyote_time * 1000:
+		_last_press_jump = -1
 		change_state(STATE.jump)
 		return
 	
@@ -133,10 +146,13 @@ func _idle_state_enter() -> void:
 		return
 		
 	_check_looking_dir()
+	animated_sprite_2d.play("idle")
 	velocity.x = 0.0
 
 func _idle_state() -> void:
-	velocity.y += gravity_amount * _delta_time
+	if !is_on_floor():
+		change_state(STATE.airborne)
+		return
 	
 	if _external_acell.y != 0:
 		change_state(STATE.walk)
@@ -145,25 +161,39 @@ func _idle_state() -> void:
 		change_state(STATE.airborne)
 		return
 	
+	if _valid_swing_input():
+		_is_swinging = true
+		animated_sprite_2d.play("idle_swing")
+		animated_sprite_2d.animation_finished.connect(_idle_swing_end, CONNECT_ONE_SHOT)
+		_break_terrain_pickaxe()
+	
 	if Input.is_action_just_pressed("jump"):
 		change_state(STATE.jump)
 		return
-		
+	
 	if _horizontal_input != 0.0:
 		change_state(STATE.walk)
 		return
 
-## Walk
+func _idle_swing_end() -> void:
+	_is_swinging = false
+	animated_sprite_2d.play("idle")
+
+func _idle_state_leave() -> void:
+	if animated_sprite_2d.animation_finished.is_connected(_idle_swing_end):
+		_is_swinging = false
+		animated_sprite_2d.animation_finished.disconnect(_idle_swing_end)
+
+# ---------- Walk ----------
+
+func _walk_state_enter() -> void:
+	animated_sprite_2d.play("walk")
+
 func _walk_state() -> void:
 	if !is_on_floor():
 		_allow_coyote_time()
 		change_state(STATE.airborne)
 		return
-	
-	#if _should_try_tunnel:
-		#if collisions.left_collision or collisions.right_collision:
-			#change_state(STATE.tunnel)
-			#return
 	
 	_check_looking_dir()
 	if _horizontal_input == 0.0:
@@ -181,14 +211,29 @@ func _walk_state() -> void:
 	else:
 		velocity.x = max(velocity.x - (ground_speed_accel * _delta_time), -ground_speed_max)
 
-## Jump
+# ---------- Jump ----------
+
 func _jump_state() -> void:
 	_block_coyote_time()
 	velocity.y = -jump_force
 	change_state(STATE.airborne)
 
+#func _jump_state_enter() -> void:
+	#animated_sprite_2d.play("jump")
+	#animated_sprite_2d.animation_finished.connect(_jump_state_leave, CONNECT_ONE_SHOT)
+#
+#func _jump_state() -> void:
+	#if !is_on_floor():
+		#animated_sprite_2d.animation_finished.disconnect(_jump_state_leave)
+		#change_state(STATE.airborne)
+#
+#func _jump_state_leave() -> void:
+	#_block_coyote_time()
+	#velocity.y = -jump_force
+	#change_state(STATE.airborne)
 
-## Airborne
+# ---------- Airborne ----------
+
 var _airborne_time_enter: int = -1
 
 func _allow_coyote_time() -> void:
@@ -197,24 +242,27 @@ func _allow_coyote_time() -> void:
 func _block_coyote_time() -> void:
 	_airborne_time_enter = -1
 
+func _airborne_state_enter() -> void:
+	animated_sprite_2d.play("airborne")
+
 func _airborne_state() -> void:
-	#if _should_try_tunnel and (collisions.above_collision or collisions.below_collision
-	#or collisions.left_collision or collisions.right_collision):
-		#change_state(STATE.tunnel)
-		#return
-	
 	if is_on_floor():
 		if _horizontal_input == 0.0: change_state(STATE.idle)
 		else: change_state(STATE.walk)
 		return
-		
+	
+	if _valid_swing_input():
+		_is_swinging = true
+		animated_sprite_2d.play("airborne_swing")
+		animated_sprite_2d.animation_finished.connect(_airbone_swing_end, CONNECT_ONE_SHOT)
+	
 	if Input.is_action_just_pressed("jump"):
 		var time_now: int = Time.get_ticks_msec()
 		if time_now - _airborne_time_enter < coyote_time * 1000:
 			change_state(STATE.jump)
 			return
 		else:
-			last_press_jump = time_now
+			_last_press_jump = time_now
 	
 	_check_looking_dir()
 	if _horizontal_input == 0.0:
@@ -230,7 +278,23 @@ func _airborne_state() -> void:
 	else:
 		velocity.y += gravity_amount * _delta_time
 
+func _airbone_swing_end() -> void:
+	_is_swinging = false
+	animated_sprite_2d.play("airborne")
+
+func _airborne_state_leave() -> void:
+	if animated_sprite_2d.animation_finished.is_connected(_airbone_swing_end):
+		_is_swinging = false
+		animated_sprite_2d.animation_finished.disconnect(_airbone_swing_end)
+
 #endregion
+
+func _valid_swing_input() -> bool:
+	var time_now: int = Time.get_ticks_msec()
+	if Input.is_action_just_pressed("hit_pickaxe") and _last_swing_input + _swing_cooldown < time_now:
+		_last_swing_input = time_now
+		return true
+	else: return false
 
 func _get_angle_input() -> float:
 	var input_dir: Vector2 = Vector2.ZERO
@@ -242,7 +306,7 @@ func _check_looking_dir() -> void:
 	if _horizontal_input != 0:
 		animated_sprite_2d.flip_h = _horizontal_input < 0.0
 
-func hit_pickaxe() -> void:
+func _break_terrain_pickaxe() -> void:
 	var collision_shape_2d: CollisionShape2D = $CollisionShape2D
 	var rect: Rect2 = collision_shape_2d.shape.get_rect()
 	rect.position = collision_shape_2d.to_global(rect.position)

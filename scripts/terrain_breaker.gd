@@ -84,6 +84,9 @@ func eval_area(global_top_left: Vector2) -> Vector2:
 func eval_area_override_force(global_top_left: Vector2, eval_force: int) -> Vector2:
 	return Global.chunks.eval_area_mask(global_top_left, _mask_original, eval_force)
 
+func eval_break_area(global_top_left: Vector2, eval_force: int, callback: Callable) -> void:
+	Global.chunks.eval_break_area_mask(global_top_left, _mask_original, force, eval_force, callback)
+
 func request_eval() -> void:
 	pass
 

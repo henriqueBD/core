@@ -25,6 +25,8 @@ var _collision_RID: RID
 var _poligons_RID: Array[RID] = []
 var _collision_mutex: Mutex = Mutex.new()
 
+var _scheduled_update: bool
+
 enum TILE_TYPE { AIR, dirt, stone, gold, clovium, metal }
 
 enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
@@ -156,28 +158,33 @@ func _has_same_neighbors(x_check: int, y_check: int) -> bool:
 static func decompress_chunk(compressed_data: PackedByteArray) -> PackedByteArray:
 	return compressed_data.decompress(Globals.CHUNK_SIZE, Globals.CHUNK_COMPRESSION_METHOD)
 
-static func create_texture_from_terrain_data(terrain_data: PackedByteArray) -> Image:
+static func create_texture_from_terrain_data(terrain_data: PackedByteArray, mask: BitMap) -> Image:
 	var terrain_img: Image = Image.create_empty(Global.CHUNK_SIDE, Global.CHUNK_SIDE, false, Image.FORMAT_RGBA8)
 	
-	for i: int in range(terrain_data.size()):
-		var grid_img_coords: Vector2i = Vector2i(i % Global.CHUNK_SIDE, i / Global.CHUNK_SIDE)
-		var curr_tile: TILE_TYPE = terrain_data[i] as TILE_TYPE
-		if curr_tile == TILE_TYPE.AIR: 
-			terrain_img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[0])
-			continue
-		if !(
-			grid_img_coords.x > 0 and grid_img_coords.x < Global.CHUNK_SIDE-1 and
-			grid_img_coords.y > 0 and grid_img_coords.y < Global.CHUNK_SIDE-1 and
-			terrain_data[(grid_img_coords.y + 1) * Global.CHUNK_SIDE + grid_img_coords.x] == curr_tile and 
-			terrain_data[grid_img_coords.y * Global.CHUNK_SIDE + (grid_img_coords.x + 1)] == curr_tile and
-			terrain_data[(grid_img_coords.y - 1) * Global.CHUNK_SIDE + grid_img_coords.x] == curr_tile and 
-			terrain_data[grid_img_coords.y * Global.CHUNK_SIDE + (grid_img_coords.x - 1)] == curr_tile
-			):
-			terrain_img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[terrain_data[i]])
-		else:
+	if mask != null:
+		for i: int in range(terrain_data.size()):
+			var grid_img_coords: Vector2i = Vector2i(i % Global.CHUNK_SIDE, i / Global.CHUNK_SIDE)
+			var curr_tile: int = terrain_data[i]
+			if curr_tile == TILE_TYPE.AIR: 
+				terrain_img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[0])
+				continue
+			if mask.get_bitv(grid_img_coords):
+				terrain_img.set_pixelv(
+					grid_img_coords, 
+					_tile_sprites[curr_tile].get_pixelv(Vector2i((grid_img_coords)) % _tile_sprites[curr_tile].get_size())
+				)
+			else:
+				terrain_img.set_pixelv(grid_img_coords, chunk_mng.tile_background_colors[curr_tile])
+	else:
+		for i: int in range(terrain_data.size()):
+			var grid_img_coords: Vector2i = Vector2i(i % Global.CHUNK_SIDE, i / Global.CHUNK_SIDE)
+			var curr_tile: int = terrain_data[i]
+			if curr_tile == TILE_TYPE.AIR: 
+				terrain_img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[0])
+				continue
 			terrain_img.set_pixelv(
 				grid_img_coords, 
-				_tile_sprites[terrain_data[i]].get_pixelv(Vector2i((grid_img_coords)) % _tile_sprites[terrain_data[i]].get_size())
+				_tile_sprites[curr_tile].get_pixelv(Vector2i((grid_img_coords)) % _tile_sprites[curr_tile].get_size())
 			)
 	
 	return terrain_img
@@ -382,9 +389,11 @@ func change_tiles(destroy_rect_world: Rect2, new_type: TILE_TYPE) -> void:
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
 			_set_tile(x_pos, y_pos, new_type)
 	
-	_recalculate_area_accurate(destroy_rect_world)
+	#_recalculate_area_accurate(destroy_rect_world)
 	tex.update(img)
 	changed_terrain = true
+
+#region multithread stuff
 
 func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
 	if _breaker_thread.is_started():
@@ -430,6 +439,46 @@ func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, 
 		_terrain_collision_update(new_body)
 		tex.update.call_deferred(img)
 		changed_terrain = true
+
+## Will break tiles and if it encounters a tile that it cannot break it calls callback(angle_radians: float)
+func eval_break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int, eval_force: int, callback: Callable) -> void:
+	if _breaker_thread.is_started():
+		_breaker_thread.wait_to_finish()
+	
+	var grid_pos_start: Vector2i = world_to_grid(start)
+	var grid_pos_end: Vector2i = world_to_grid(start + Vector2(mask.get_size()))
+	
+	var new_body: RID = _init_terrain_collision()
+	
+	_breaker_thread.start(eval_break_area_mask_helper.bind(grid_pos_start, grid_pos_end, mask, mining_force, eval_force, callback, new_body))
+
+func eval_break_area_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, mask: BitMap, mining_force: int, eval_force: int, callback: Callable, new_body: RID) -> void:
+	var stronger_tiles_dir: Vector2 = Vector2.ZERO
+	var rect_center: Vector2 = (grid_pos_start + grid_pos_end) / 2.0
+	
+	var tile_tmp: TILE_TYPE
+	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
+		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
+			tile_tmp = _get_tile_safe(x_pos, y_pos)
+			if (!mask.get_bit(x_pos - grid_pos_start.x, y_pos - grid_pos_start.y) and
+				tile_tmp != TILE_TYPE.AIR):
+				if chunk_mng.tile_durability[int(tile_tmp)] > eval_force:
+					stronger_tiles_dir += Vector2(x_pos, y_pos) - rect_center
+	
+		if stronger_tiles_dir != Vector2.ZERO and callback:
+			print("Calling")
+			callback.call_deferred(stronger_tiles_dir.angle())
+	
+	_break_tiles_mask_helper(grid_pos_start, grid_pos_end, mask, mining_force, new_body)
+
+func _schedule_update() -> void:
+	if _scheduled_update: return
+	_update_deffered.call_deferred()
+
+func _update_deffered() -> void:
+	tex.update(img)
+
+#endregion
 
 #check chunks.eval area for more info
 func eval_area(global_rect: Rect2, mining_force: int) -> Vector4:
@@ -635,12 +684,12 @@ static func compress_chunk(decompressed_data: PackedByteArray) -> PackedByteArra
 
 #endregion
 
-func _draw() -> void:
-	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
-	rng.seed = 1
-	for rid: RID in _poligons_RID:
-		var poly_data: PackedVector2Array = PhysicsServer2D.shape_get_data(rid)
-		draw_colored_polygon(poly_data, Color.from_rgba8(rng.randi_range(0, 255), rng.randi_range(0, 255), rng.randi_range(0, 255), 100))
+#func _draw() -> void:
+	#var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	#rng.seed = 1
+	#for rid: RID in _poligons_RID:
+		#var poly_data: PackedVector2Array = PhysicsServer2D.shape_get_data(rid)
+		#draw_colored_polygon(poly_data, Color.from_rgba8(rng.randi_range(0, 255), rng.randi_range(0, 255), rng.randi_range(0, 255), 100))
 
 func _exit_tree() -> void:
 	if Engine.is_editor_hint(): return

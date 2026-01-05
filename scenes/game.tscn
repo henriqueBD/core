@@ -34,11 +34,7 @@ ground_speed_max = 200.0
 ground_speed_accel = 600.0
 _mining_level = 1
 _mining_offset = Vector2(0, 0)
-_pickaxe_boost_force = 3.5
-_boost_break_time_ms = 350
-_tunelling_speed = 200.0
-_turning_speed_tunneling = 4.5
-_exit_speed = 3.0
+_swing_cooldown = 300.0
 
 [node name="PlayerSpawner" parent="." instance=ExtResource("7_0tnpc")]
 position = Vector2(-165, 625)

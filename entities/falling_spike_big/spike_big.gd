@@ -27,6 +27,9 @@ func _on_area_entered(area: Area2D) -> void:
 	if area.is_in_group("Player"):
 		_fall()
 
+func _eval_callback(_angle: float) -> void:
+	_timer_touch = 0.01
+
 func _fall() -> void:
 	print("Falling")
 	set_physics_process(true)
@@ -42,16 +45,15 @@ func _physics_process(delta: float) -> void:
 	global_position.y += FALLING_SPEED * delta
 	tracker.move(global_position)
 	
-	var res: Vector2 = _breaker.eval_area_override_force(global_position, 2)
 	
-	if _timer_touch > 0.0 or !is_nan(res.y):
+	if _timer_touch > 0.0:
 		_timer_touch += delta
 	
 	if _timer_touch > DESTROY_AFTER_TOUCH_SEC:
 		_destroy()
 	
-	#_chunks.break_tiles_mask(self.global_position, TERRAIN_DESTROY_MASK, 2)
-	_breaker.break_terrain(global_position)
+	#_breaker.break_terrain(global_position)
+	_breaker.eval_break_area(global_position, 2, _eval_callback)
 
 func _destroy() -> void:
 	queue_free()

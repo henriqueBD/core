@@ -52,7 +52,6 @@ func _enter_tree():
 			if not _chunks:
 				print("failed to get chunk_mng")
 			else:
-				_chunks.late_ready()
 				_should_update = true
 	
 	self.main_screen_changed.connect(_on_work_place_changed)
@@ -264,7 +263,7 @@ func decode_and_load_chunks_from_image(file_name: String) -> void:
 		var reload_instance := _chunks._chunks_dict[reload]
 		var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(reload))
 		assert(terrain_data.size() == Globals.CHUNK_SIZE)
-		var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data)
+		var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data, null)
 		reload_instance.data = terrain_data
 		reload_instance.img = terrain_image
 		var sprite := ImageTexture.create_from_image(terrain_image)
@@ -386,7 +385,6 @@ func _on_work_place_changed(screen_name: String) -> void:
 		if not _chunks and _same_scene:
 			var curr_scene := EditorInterface.get_edited_scene_root()
 			_chunks = curr_scene.get_node_or_null("Chunk")
-			_chunks.late_ready()
 	
 	_check_if_should_update()
 
@@ -398,14 +396,13 @@ func _on_scene_changed(scene_root: Node) -> void:
 		_check_if_should_update()
 		return
 	if str(scene_root.name) != TARGET_SCENE_PATH:
-		#unload_stuff()
+		unload_stuff()
 		_same_scene = false
 	else:
 		_same_scene = true
 		if not _chunks and _same_workplace:
 			var curr_scene := EditorInterface.get_edited_scene_root()
 			_chunks = curr_scene.get_node_or_null("Chunk")
-			_chunks.late_ready()
 	_check_if_should_update()
 
 func _check_if_should_update() -> void:
