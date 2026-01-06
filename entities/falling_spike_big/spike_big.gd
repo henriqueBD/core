@@ -28,6 +28,7 @@ func _on_area_entered(area: Area2D) -> void:
 		_fall()
 
 func _eval_callback(_angle: float) -> void:
+	print("Call")
 	_timer_touch = 0.01
 
 func _fall() -> void:

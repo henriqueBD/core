@@ -397,7 +397,7 @@ func change_tiles(destroy_rect_world: Rect2, new_type: TILE_TYPE) -> void:
 
 #region multithread stuff
 
-func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
+func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int, id: int) -> void:
 	if _breaker_thread.is_started():
 		_breaker_thread.wait_to_finish()
 	
@@ -406,9 +406,9 @@ func break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int) -> void:
 	
 	var new_body: RID = _init_terrain_collision()
 	
-	_breaker_thread.start(_break_tiles_mask_helper.bind(grid_pos_start, grid_pos_end, mask, mining_force, new_body))
+	_breaker_thread.start(_break_tiles_mask_helper.bind(grid_pos_start, grid_pos_end, mask, mining_force, new_body, id))
 
-func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, mask: BitMap, mining_force: int, new_body: RID) -> void:
+func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, mask: BitMap, mining_force: int, new_body: RID, id: int) -> void:
 	_terrain_really_changed = false
 	
 	var image_origin_x: int = grid_pos_start.x
@@ -443,9 +443,11 @@ func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, 
 		_terrain_collision_update(new_body)
 		_schedule_update()
 		changed_terrain = true
+	
+	Global.chunks.break_tiles_post(id, _terrain_really_changed)
 
 ## Will break tiles and if it encounters a tile that it cannot break it calls callback(angle_radians: float)
-func eval_break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int, eval_force: int, callback: Callable) -> void:
+func eval_break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int, eval_force: int, id: int) -> void:
 	if _breaker_thread.is_started():
 		_breaker_thread.wait_to_finish()
 	
@@ -454,26 +456,41 @@ func eval_break_tiles_mask(start: Vector2, mask: BitMap, mining_force: int, eval
 	
 	var new_body: RID = _init_terrain_collision()
 	
-	_breaker_thread.start(eval_break_area_mask_helper.bind(grid_pos_start, grid_pos_end, mask, mining_force, eval_force, callback, new_body))
+	_breaker_thread.start(eval_break_area_mask_helper.bind(grid_pos_start, grid_pos_end, mask, mining_force, eval_force, new_body, id))
 
-func eval_break_area_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, mask: BitMap, mining_force: int, eval_force: int, callback: Callable, new_body: RID) -> void:
+func eval_break_area_mask_helper(
+	grid_pos_start: Vector2i, grid_pos_end: Vector2i, mask: BitMap, 
+	mining_force: int, eval_force: int, new_body: RID, id: int) -> void:
+	
 	var stronger_tiles_dir: Vector2 = Vector2.ZERO
 	var rect_center: Vector2 = (grid_pos_start + grid_pos_end) / 2.0
 	
-	var tile_tmp: TILE_TYPE
+	var image_origin_x: int = grid_pos_start.x
+	var image_origin_y: int = grid_pos_start.y
+	
+	grid_pos_start.x = max(0, grid_pos_start.x)
+	grid_pos_start.y = max(0, grid_pos_start.y)
+	
+	grid_pos_end.x = min(Global.CHUNK_SIDE, grid_pos_end.x)
+	grid_pos_end.y = min(Global.CHUNK_SIDE, grid_pos_end.y)
+	
+	#??
+	grid_pos_end.x = min(grid_pos_end.x, image_origin_x + mask.get_size().x)
+	grid_pos_end.y = min(grid_pos_end.y, image_origin_y + mask.get_size().y)
+	
 	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
-			tile_tmp = _get_tile_safe(x_pos, y_pos)
-			if (!mask.get_bit(x_pos - grid_pos_start.x, y_pos - grid_pos_start.y) and
-				tile_tmp != TILE_TYPE.AIR):
-				if chunk_mng.tile_durability[int(tile_tmp)] > eval_force:
-					stronger_tiles_dir += Vector2(x_pos, y_pos) - rect_center
+			var tile_to_eval: TILE_TYPE = _get_tile(x_pos, y_pos)
+			
+			if (!mask.get_bit(x_pos - image_origin_x, y_pos - image_origin_y) or
+				tile_to_eval == TILE_TYPE.AIR or 
+				chunk_mng.tile_durability[tile_to_eval] > eval_force):
+				continue
+			
+			stronger_tiles_dir += Vector2(x_pos, y_pos) - rect_center
 	
-		if stronger_tiles_dir != Vector2.ZERO and callback:
-			print("Calling")
-			callback.call_deferred(stronger_tiles_dir.angle())
-	
-	_break_tiles_mask_helper(grid_pos_start, grid_pos_end, mask, mining_force, new_body)
+	Global.chunks.eval_tiles_post(id, stronger_tiles_dir)
+	_break_tiles_mask_helper(grid_pos_start, grid_pos_end, mask, mining_force, new_body, id + 1)
 
 func _schedule_update() -> void:
 	if _scheduled_update: return

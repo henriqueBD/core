@@ -35,8 +35,6 @@ var _use_multithread: bool = false
 var _loader_continue: bool = true
 var _loader_thread: Thread
 
-var _terrain_break_thread: Thread
-
 var _array_load_mutex: Mutex = Mutex.new()
 var _chunk_load_queue: Array[Vector2i] = []
 var _chunk_loading: Vector2i = Vector2i.MIN
@@ -46,6 +44,12 @@ var _chunk_unloading: Vector2i = Vector2i.MIN
 
 var _last_center_chunk: Vector2i = Vector2i(-1, -1)
 var _curr_center_chunk: Vector2i
+
+## TODO: Better naming and comment this
+var _break_id: Dictionary[int, Array] = {}
+var _curr_id: int = 0
+var _counter_mutex_break: Mutex
+var _counter_mutex_eval: Mutex
 
 var editor_stuff_active: bool = false
 
@@ -70,6 +74,8 @@ func _enter_tree() -> void:
 		self.set_process(false)
 		Global.player_spawned.connect(_on_player_spawned)
 		_use_multithread = true
+		_counter_mutex_break = Mutex.new()
+		_counter_mutex_eval = Mutex.new()
 		Global.chunks = self
 		Global.chunk_load.connect(_on_chunk_loaded)
 	
@@ -193,22 +199,6 @@ func _loader_end() -> void:
 
 #endregion
 
-#region Terrain Breaker
-
-func _terrain_breaker_start() -> void:
-	_terrain_breaker_end()
-	if !_terrain_break_thread:
-		_terrain_break_thread = Thread.new()
-
-func _terrain_breaker_process() -> void:
-	pass
-
-func _terrain_breaker_end() -> void:
-	if _terrain_break_thread and _terrain_break_thread.is_alive():
-		_terrain_break_thread.wait_to_finish()
-
-#endregion
-
 func _load_tile_resources() -> void:
 	tile_sprites = [null]
 	tile_durability = [0]
@@ -256,13 +246,7 @@ func is_rect_in_bounds(rect: Rect2) -> bool:
 	
 	return true
 
-##Returns Vector2
-##
-##X: the angle of the general direction of the tiles different that AIR in relation to the area center, 
-##if no tiles returns NAN
-##
-##Y: the angle of the general direction of the tiles that cannot be broken with the mining_force in relation to the area center, 
-##if no tiles returns NAN
+
 func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
 	var chunks: Rect2i = _get_rect_bounds(area_rect.position, area_rect.size)
 	
@@ -286,10 +270,52 @@ func eval_area_mask(start_world: Vector2, mask: BitMap, mining_force: int) -> Ve
 	return chunk_to_eval.eval_area_mask(start_world, mask, mining_force)
 
 ##See eval_area for documentation
-func eval_break_area_mask(start_world: Vector2, mask: BitMap, mining_force: int, eval_force: int, callback: Callable) -> void:
-	var chunk_to_eval: chunk_tile = world_to_chunk(start_world)
-	chunk_to_eval.eval_break_tiles_mask(start_world, mask, mining_force, eval_force, callback)
+func eval_break_area_mask(global_top_left: Vector2, mask: BitMap, mining_force: int, eval_force: int, callback: Callable) -> void:
+	var world_rect: Rect2 = Rect2(
+		global_top_left,
+		mask.get_size() as Vector2
+	)
+	
+	var chunks: Rect2i = _get_rect_bounds(global_top_left, mask.get_size())
+	var num_threads: int = 0
+	
+	
+	_counter_mutex_eval.lock()
+	_counter_mutex_break.lock()
+	
+	for x: int in range(chunks.position.x, chunks.size.x + 1):
+		for y: int in range(chunks.position.y, chunks.size.y + 1):
+			var key: Vector2i = Vector2i(x, y)
+			if _chunks_dict.has(key):
+				num_threads += 1
+				#_chunks_dict[key].break_tiles_mask(global_top_left, mask, mining_force, _curr_id)
+				_chunks_dict[key].eval_break_tiles_mask(global_top_left, mask, mining_force, eval_force, _curr_id)
+	
+	if num_threads > 0:
+		_break_id[_curr_id] = [num_threads, Vector2.ZERO, callback]
+		_break_id[_curr_id + 1] = [num_threads, world_rect, false]
+		_curr_id += 2
+	
+	_counter_mutex_break.unlock()
+	_counter_mutex_eval.unlock()
 
+func eval_tiles_post(id: int, angle: Vector2) -> void:
+	_counter_mutex_eval.lock()
+	
+	var dict_res: Array = _break_id[id]
+	
+	dict_res[0] -= 1
+	dict_res[1] += angle
+	
+	if dict_res[0] == 0:
+		var angle_sum: Vector2 = dict_res[1]
+		if angle_sum != Vector2.ZERO:
+			var callback: Callable = dict_res[2]
+			if callback.is_valid():
+				callback.call_deferred(angle_sum.angle())
+		dict_res.erase(id)
+		
+	_counter_mutex_eval.unlock()
 
 func change_tiles(world_rect: Rect2, type: chunk_tile.TILE_TYPE) -> void:
 	var chunk_top_left: Vector2i = world_to_chunk_key(world_rect.position)
@@ -311,28 +337,6 @@ func change_tiles(world_rect: Rect2, type: chunk_tile.TILE_TYPE) -> void:
 		_chunks_dict.has(chunk_bottom_left)):
 		_chunks_dict[chunk_bottom_left].change_tiles(world_rect, type)
 
-func break_tiles(world_rect: Rect2, mining_force: int) -> void:
-	var chunk_top_left: Vector2i = world_to_chunk_key(world_rect.position)
-	var chunk_top_right: Vector2i = world_to_chunk_key(
-		Vector2(world_rect.position.x + world_rect.size.x, world_rect.position.y))
-	var chunk_bottom_right: Vector2i = world_to_chunk_key(
-		Vector2(world_rect.position.x, world_rect.position.y + world_rect.size.y))
-	var chunk_bottom_left: Vector2i = world_to_chunk_key(
-		Vector2(world_rect.position.x + world_rect.size.x, world_rect.position.y + world_rect.size.y))
-	
-	if _chunks_dict.has(chunk_top_left):
-		_chunks_dict[chunk_top_left].break_tiles(world_rect, mining_force)
-	if chunk_top_right != chunk_top_left and _chunks_dict.has(chunk_top_right):
-		_chunks_dict[chunk_top_right].break_tiles(world_rect, mining_force)
-	if chunk_bottom_right != chunk_top_left and _chunks_dict.has(chunk_bottom_right):
-		_chunks_dict[chunk_bottom_right].break_tiles(world_rect, mining_force)
-	if (chunk_bottom_left != chunk_top_right and 
-		chunk_bottom_left != chunk_bottom_right and 
-		_chunks_dict.has(chunk_bottom_left)):
-		_chunks_dict[chunk_bottom_left].break_tiles(world_rect, mining_force)
-	
-	Global.terrain_break.emit(world_rect)
-
 func break_tiles_mask(global_top_left: Vector2, mask: BitMap, mining_force: int) -> void:
 	var world_rect: Rect2 = Rect2(
 		global_top_left,
@@ -340,14 +344,42 @@ func break_tiles_mask(global_top_left: Vector2, mask: BitMap, mining_force: int)
 	)
 	
 	var chunks: Rect2i = _get_rect_bounds(global_top_left, mask.get_size())
+	var num_threads: int = 0
+	
+	_counter_mutex_break.lock()
 	
 	for x: int in range(chunks.position.x, chunks.size.x + 1):
 		for y: int in range(chunks.position.y, chunks.size.y + 1):
 			var key: Vector2i = Vector2i(x, y)
 			if _chunks_dict.has(key):
-				_chunks_dict[key].break_tiles_mask(global_top_left, mask, mining_force)
+				num_threads += 1
+				_chunks_dict[key].break_tiles_mask(global_top_left, mask, mining_force, _curr_id)
 	
-	Global.terrain_break.emit(world_rect)
+	if num_threads > 0:
+		_break_id[_curr_id] = [num_threads, world_rect, false]
+		_curr_id += 1
+	
+	_counter_mutex_break.unlock()
+
+## TODO: thread unsafe ??
+func break_tiles_post(id: int, broke_tiles: bool) -> void:
+	_counter_mutex_break.lock()
+	
+	var dict_res: Array = _break_id[id]
+	
+	if broke_tiles:
+		dict_res[2] = true
+		
+	dict_res[0] -= 1
+	
+	if dict_res[0] == 0:
+		
+		if dict_res[2]:
+			Global.terrain_break.emit.call_deferred(dict_res[1])
+			
+		dict_res.erase(id)
+		
+	_counter_mutex_break.unlock()
 
 func load_nearby_chunks(global_pos: Vector2) -> void:
 	_curr_center_chunk = world_to_chunk_key(global_pos)
