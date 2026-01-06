@@ -23,7 +23,9 @@ var _breaker_thread: Thread = Thread.new()
 
 var _collision_RID: RID
 var _poligons_RID: Array[RID] = []
+
 var _collision_mutex: Mutex = Mutex.new()
+var _image_mutex: Mutex = Mutex.new()
 
 var _scheduled_update: bool
 
@@ -422,6 +424,7 @@ func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, 
 	grid_pos_end.x = min(grid_pos_end.x, image_origin_x + mask.get_size().x)
 	grid_pos_end.y = min(grid_pos_end.y, image_origin_y + mask.get_size().y)
 	
+	_image_mutex.lock()
 	for x_pos: int in range(grid_pos_start.x, grid_pos_end.x):
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
 			var tile_to_break: TILE_TYPE = _get_tile(x_pos, y_pos)
@@ -434,10 +437,11 @@ func _break_tiles_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2i, 
 			_terrain_really_changed = true
 			_break_tile(x_pos, y_pos)
 			img.set_pixel(x_pos, y_pos, chunk_mng.tile_background_colors[tile_to_break])
+	_image_mutex.unlock()
 	
 	if _terrain_really_changed:
 		_terrain_collision_update(new_body)
-		tex.update.call_deferred(img)
+		_schedule_update()
 		changed_terrain = true
 
 ## Will break tiles and if it encounters a tile that it cannot break it calls callback(angle_radians: float)
@@ -473,9 +477,11 @@ func eval_break_area_mask_helper(grid_pos_start: Vector2i, grid_pos_end: Vector2
 
 func _schedule_update() -> void:
 	if _scheduled_update: return
+	_scheduled_update = true
 	_update_deffered.call_deferred()
 
 func _update_deffered() -> void:
+	_scheduled_update = false
 	tex.update(img)
 
 #endregion
