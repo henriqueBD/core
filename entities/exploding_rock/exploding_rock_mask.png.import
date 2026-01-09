@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://bub50jpj1b3v3"
+path="res://.godot/imported/exploding_rock_mask.png-992d66589ad78898008d7b2157688073.image"
+
+[deps]
+
+source_file="res://entities/exploding_rock/exploding_rock_mask.png"
+dest_files=["res://.godot/imported/exploding_rock_mask.png-992d66589ad78898008d7b2157688073.image"]
+
+[params]
+

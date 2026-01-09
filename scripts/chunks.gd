@@ -4,12 +4,13 @@ extends Node2D
 
 const chunk_scene: Resource = preload("res://scenes/Chunk_tile.tscn")
 
-const folderPath: String = "res://chunks/"
+const folderPath_debug: String = ""
+const FOLDER_PATH_RELEASE: String = "res://chunks/"
 const terrain_type_folder: String = "res://terrain_types/"
 const meta_unique_id: String = "unique_id"
 
 # Editor
-const emptyChunkPath: String = folderPath + "emptyChunk.dat"
+const emptyChunkPath: String = FOLDER_PATH_RELEASE + "emptyChunk.dat"
 var emptyChunkTemplate: PackedByteArray
 
 static var tile_sprites: Array[Image]
@@ -23,6 +24,8 @@ var _player: player_character
 @export var _chunks_load_radius_editor: int = 5
 @export var save_on_exit: bool
 
+
+var folderPath: String = FOLDER_PATH_RELEASE
 var _chunks_load_radius: int
 
 var _chunks_dict: Dictionary[Vector2i, chunk_tile] = {}
@@ -78,6 +81,9 @@ func _enter_tree() -> void:
 		_counter_mutex_eval = Mutex.new()
 		Global.chunks = self
 		Global.chunk_load.connect(_on_chunk_loaded)
+	
+	if OS.has_feature("editor") or OS.is_debug_build():
+		folderPath = folderPath_debug
 	
 	create_empty_chunk_file()
 	emptyChunkTemplate = FileAccess.get_file_as_bytes(emptyChunkPath)
@@ -191,6 +197,47 @@ func _loader_process() -> void:
 			_chunks_dict_mutex.unlock()
 			_chunk_unloading = Vector2i.MIN
 
+func _load_chunk_thread_safe(chunk_to_load_coords: Vector2i) -> void:
+	var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
+	
+	#Load chunk terrain
+	var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
+	assert(terrain_data.size() == Globals.CHUNK_SIZE)
+	
+	var previous_terrain_mask: BitMap = _unloaded_chunks_terrain_modified.get(chunk_to_load_coords)
+	#if _unloaded_chunks_terrain_modified.has(chunk_to_load_coords):
+		#pass
+	
+	var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data, previous_terrain_mask)
+	var terrain_mask: BitMap = chunk_tile.get_terrain_mask_from_data(terrain_data, previous_terrain_mask)
+	var terrain_collision: Array[CollisionPolygon2D] = chunk_tile.get_terrain_collision(terrain_mask)
+	
+	#Load chunk entities
+	var instances: Array[Array] = [[], []]
+	var instances_static: Array[Node2D]
+	var instances_dynamic: Array[Node2D]
+	var entities: obj_chunk = obj_chunk.deserialize(chunk_to_load_coords)
+	
+	if !entities.id_static.is_empty() or !entities.id_dynamic.is_empty():
+		if Engine.is_editor_hint():
+			add_objects_editor(new_chunk_instance, entities)
+		else:
+			instances = _get_objects(entities)
+			instances_static = instances[0]
+			instances_dynamic = instances[1]
+			if !instances_dynamic.is_empty():
+				_convert_obj_pos_to_chunk_local(instances_dynamic, chunk_to_load_coords)
+	
+	call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
+	new_chunk_instance.initialize_deffered(
+		chunk_to_load_coords, 
+		terrain_data, 
+		terrain_image, 
+		terrain_collision,
+		terrain_mask,
+		instances_static, 
+		instances_dynamic)
+
 func _loader_end() -> void:
 	_loader_continue = false
 	if _loader_thread:
@@ -264,12 +311,10 @@ func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
 	return Vector2(NAN if weaker_direction == Vector2.ZERO else weaker_direction.angle(),
 					NAN if stronger_direction == Vector2.ZERO else stronger_direction.angle())
 
-##See eval_area for documentation
 func eval_area_mask(start_world: Vector2, mask: BitMap, mining_force: int) -> Vector2:
 	var chunk_to_eval: chunk_tile = world_to_chunk(start_world)
 	return chunk_to_eval.eval_area_mask(start_world, mask, mining_force)
 
-##See eval_area for documentation
 func eval_break_area_mask(global_top_left: Vector2, mask: BitMap, mining_force: int, eval_force: int, callback: Callable) -> void:
 	var world_rect: Rect2 = Rect2(
 		global_top_left,
@@ -279,7 +324,7 @@ func eval_break_area_mask(global_top_left: Vector2, mask: BitMap, mining_force: 
 	var chunks: Rect2i = _get_rect_bounds(global_top_left, mask.get_size())
 	var num_threads: int = 0
 	
-	
+	##CRITICAL: thread lock here
 	_counter_mutex_eval.lock()
 	_counter_mutex_break.lock()
 	
@@ -288,7 +333,6 @@ func eval_break_area_mask(global_top_left: Vector2, mask: BitMap, mining_force: 
 			var key: Vector2i = Vector2i(x, y)
 			if _chunks_dict.has(key):
 				num_threads += 1
-				#_chunks_dict[key].break_tiles_mask(global_top_left, mask, mining_force, _curr_id)
 				_chunks_dict[key].eval_break_tiles_mask(global_top_left, mask, mining_force, eval_force, _curr_id)
 	
 	if num_threads > 0:
@@ -447,47 +491,6 @@ func _load_chunk_simple(load_coords: Vector2i) -> void:
 	else:
 		add_objects(newChunk, entities)
 
-func _load_chunk_thread_safe(chunk_to_load_coords: Vector2i) -> void:
-	var new_chunk_instance: chunk_tile = chunk_scene.instantiate()
-	
-	#Load chunk terrain
-	var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(chunk_to_load_coords))
-	assert(terrain_data.size() == Globals.CHUNK_SIZE)
-	
-	var previous_terrain_mask: BitMap = _unloaded_chunks_terrain_modified.get(chunk_to_load_coords)
-	#if _unloaded_chunks_terrain_modified.has(chunk_to_load_coords):
-		#pass
-	
-	var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data, previous_terrain_mask)
-	var terrain_mask: BitMap = chunk_tile.get_terrain_mask_from_data(terrain_data)
-	var terrain_collision: Array[CollisionPolygon2D] = chunk_tile.get_terrain_collision(terrain_mask)
-	
-	#Load chunk entities
-	var instances: Array[Array] = [[], []]
-	var instances_static: Array[Node2D]
-	var instances_dynamic: Array[Node2D]
-	var entities: obj_chunk = obj_chunk.deserialize(chunk_to_load_coords)
-	
-	if !entities.id_static.is_empty() or !entities.id_dynamic.is_empty():
-		if Engine.is_editor_hint():
-			add_objects_editor(new_chunk_instance, entities)
-		else:
-			instances = _get_objects(entities)
-			instances_static = instances[0]
-			instances_dynamic = instances[1]
-			if !instances_dynamic.is_empty():
-				_convert_obj_pos_to_chunk_local(instances_dynamic, chunk_to_load_coords)
-	
-	call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
-	new_chunk_instance.initialize_deffered(
-		chunk_to_load_coords, 
-		terrain_data, 
-		terrain_image, 
-		terrain_collision,
-		terrain_mask,
-		instances_static, 
-		instances_dynamic)
-
 func _instantiate_chunk(new_chunk: chunk_tile, new_chunk_coords: Vector2i) -> void:
 	add_child(new_chunk)
 	new_chunk.owner = self
@@ -589,7 +592,7 @@ func _convert_obj_pos_to_chunk_local(objs: Array[Node2D], chunk_coords: Vector2i
 		obj.global_position += coords_converted * Vector2(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE)
 
 static func get_chunk_path(chunk_coords: Vector2i) -> String:
-	return folderPath + str(chunk_coords.x) + "_" + str(chunk_coords.y) + ".dat"
+	return FOLDER_PATH_RELEASE + str(chunk_coords.x) + "_" + str(chunk_coords.y) + ".dat"
 
 func create_empty_chunk(new_chunk_pos: Vector2i) -> void:
 	var newChunk: chunk_tile = chunk_scene.instantiate()
@@ -611,6 +614,17 @@ func create_empty_chunk_file() -> void:
 		file_to_save.store_buffer(compressed_data)
 	else:
 		printerr("Probem trying to save empty chunk ")
+
+func _cleanup() -> void:
+	unload_all_chunks()
+	_loader_end()
+	
+	_unloaded_chunks_terrain_modified.clear()
+	_dynamic_entities_loaded.clear()
+	_chunks_buff_dict.clear()
+	_chunks_dict.clear()
+	_break_id.clear()
+	
 
 func _exit_tree() -> void:
 	_loader_end()

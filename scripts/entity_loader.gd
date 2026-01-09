@@ -9,31 +9,20 @@ static func init_dictionaty(path: String) -> void:
 	_init_dictionaty_helper(path)
 
 static func _init_dictionaty_helper(path: String) -> void:
-	var dir: DirAccess = DirAccess.open(path)
+	var directories: PackedStringArray = []
 	
-	if dir == null:
-		printerr("Invalid directory path: " + path)
-		return
-	
-	dir.list_dir_begin()
-	
-	while true:
-		var file: String = dir.get_next()
-		
-		if file == "":
-			break
-		
+	for file: String in ResourceLoader.list_directory(path):
 		if file.ends_with(".tscn"):
 			var scene_name: String = file.trim_suffix(".tscn")
 			var scene_path: NodePath = NodePath("%s/%s" % [path , file])
 			_id_to_path[hash_string(scene_name)] = scene_path
+		elif file.ends_with("/"):
+			directories.append(file)
 	
-	var directories: PackedStringArray = dir.get_directories()
 	for d: String in directories:
 		_init_dictionaty_helper("%s/%s" % [path, d])
 
 static func vibe_check() -> void:
-	print("Vibe checking")
 	for path: NodePath in _id_to_path.values():
 		assert(FileAccess.file_exists(path), "Path not found: " + str(path))
 

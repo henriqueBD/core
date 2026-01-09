@@ -27,6 +27,9 @@ const NO_COLLISION_RAYCAST: float = -INF
 #layers
 const LAYER_CHUNK_TERRAIN: int = 0
 const LAYER_ENTITY: int = 1
+
+const LAYER_HITBOX: int = 32
+const LAYER_HURTBOX: int = 64
 #endregion
 
 var main_node: Node

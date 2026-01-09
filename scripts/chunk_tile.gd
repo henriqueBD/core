@@ -191,14 +191,23 @@ static func create_texture_from_terrain_data(terrain_data: PackedByteArray, mask
 	
 	return terrain_img
 
-static func get_terrain_mask_from_data(terrain_data: PackedByteArray) -> BitMap:
+static func get_terrain_mask_from_data(terrain_data: PackedByteArray, previous_data: BitMap) -> BitMap:
 	var res: BitMap = BitMap.new()
 	res.create(Vector2i(Global.CHUNK_SIDE, Global.CHUNK_SIDE))
-	for x: int in range(Globals.CHUNK_SIDE):
-		for y: int in range(Globals.CHUNK_SIDE):
-			res.set_bit(
-				x, y, terrain_data[y * Global.CHUNK_SIDE + x] != TILE_TYPE.AIR
-			)
+	
+	if previous_data:
+		for x: int in range(Globals.CHUNK_SIDE):
+			for y: int in range(Globals.CHUNK_SIDE):
+				res.set_bit(
+					x, y, terrain_data[y * Global.CHUNK_SIDE + x] != TILE_TYPE.AIR and previous_data.get_bit(x, y)
+				)
+	else:
+		for x: int in range(Globals.CHUNK_SIDE):
+			for y: int in range(Globals.CHUNK_SIDE):
+				res.set_bit(
+					x, y, terrain_data[y * Global.CHUNK_SIDE + x] != TILE_TYPE.AIR
+				)
+	
 	return res
 
 static func get_terrain_collision(_terrain_data: BitMap) -> Array[CollisionPolygon2D]:

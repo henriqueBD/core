@@ -26,9 +26,10 @@ var _coyote_time_ms: int
 @export var _mining_offset: Vector2
 @export var _mining_offset_vertical: Vector2
 @export var _swing_cooldown: float
-@onready var animated_sprite_2d: AnimatedSprite2D = $AnimatedSprite2D
 
+@onready var animated_sprite_2d: AnimatedSprite2D = $AnimatedSprite2D
 @onready var editor_logic: Editor = $Editor_logic
+@onready var hitbox_pickaxe: Hitbox = $HitboxPickaxe
 
 var _external_acell: Vector2
 var _horizontal_input: float
@@ -36,7 +37,6 @@ var _vertical_input: float
 var _delta_time: float
 var _curr_state: STATE = STATE.idle
 var _curr_state_callable: Callable = _idle_state
-var _bounds: Rect2
 var _last_press_jump: int = -1
 
 var _breaker_sideway: TerrainBreaker = TerrainBreaker.init(TerrainBreaker.create_bitmap_variations("res://assets/sprites/player_break_mask.png", 5), 0, true, 0)
@@ -56,6 +56,7 @@ func _ready() -> void:
 	chunk = Global.chunks
 	set_mining_level(_mining_level)
 	_coyote_time_ms = int(coyote_time * 1000)
+	
 	Global.player_spawned.emit()
 
 func _exit_tree() -> void:
@@ -165,7 +166,7 @@ func _idle_state() -> void:
 		_is_swinging = true
 		animated_sprite_2d.play("idle_swing")
 		animated_sprite_2d.animation_finished.connect(_idle_swing_end, CONNECT_ONE_SHOT)
-		_break_terrain_pickaxe()
+		_pickaxe_logic()
 	
 	if Input.is_action_just_pressed("jump"):
 		change_state(STATE.jump)
@@ -176,7 +177,6 @@ func _idle_state() -> void:
 		return
 
 func _idle_swing_end() -> void:
-	_is_swinging = false
 	animated_sprite_2d.play("idle")
 
 func _idle_state_leave() -> void:
@@ -306,7 +306,8 @@ func _check_looking_dir() -> void:
 	if _horizontal_input != 0:
 		animated_sprite_2d.flip_h = _horizontal_input < 0.0
 
-func _break_terrain_pickaxe() -> void:
+## Breaks terrain and updates hitbox
+func _pickaxe_logic() -> void:
 	var collision_shape_2d: CollisionShape2D = $CollisionShape2D
 	var rect: Rect2 = collision_shape_2d.shape.get_rect()
 	rect.position = collision_shape_2d.to_global(rect.position)
@@ -320,6 +321,7 @@ func _break_terrain_pickaxe() -> void:
 			_breaker_sideway.break_terrain_flip_x_random(Vector2(rect.position - _mining_offset), true)
 		else:
 			_breaker_sideway.break_terrain_random(rect.position + _mining_offset)
+	hitbox_pickaxe.hit_single_frame()
 
 func set_mining_level(new_level: int) -> void:
 	_mining_level = new_level

@@ -62,6 +62,10 @@ func _is_dynamic_obj(node: Node) -> bool:
 	
 	var script: Script = node.get_script()
 	if script and script.get_global_name() == DYNAMIC_NAME: return true
+	
+	if node is tracking_obj:
+		if node.is_dynamic: return true
+	
 	for c: Node in node.get_children():
 		if _is_dynamic_obj(c): return true
 	
