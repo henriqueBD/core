@@ -8,6 +8,5 @@ func _ready() -> void:
 	monitoring = true
 
 func hit_single_frame() -> void:
-	print("wow")
 	for area: Hurtbox in get_overlapping_areas():
 		if area: area.hit_signal.emit(1)

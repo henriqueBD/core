@@ -1,11 +1,11 @@
-extends Sprite2D
+extends AnimatedSprite2D
 
 const MAX_FALLING_SEC: float = 10
 const DESTROY_AFTER_TOUCH_SEC: float = 0.2
 const FALLING_SPEED: float = 120
 const BREAK_FORCE: int = 2
 
-static var _mask: BitMap = TerrainBreaker.create_bitmap("res://entities/falling_spike_big/big_spike_destroy_mask.png")
+static var _mask: BitMap = TerrainBreaker.create_bitmap("res://entities/falling_spike/big_spike_destroy_mask.png")
 
 var _timer_self_destroy: float = 0.0
 var _timer_touch: float = 0.0
@@ -15,25 +15,27 @@ var _chunks: chunk_mng
 @onready var tracker: DynamicObjTracker = $DynamicObjTracker
 
 func _ready() -> void:
+	stop()
 	z_index = Globals.LAYER_ENTITY
 	var player_detection: PlayerDetection = $PlayerDetection
-	player_detection.set_response_enter(_fall, true)
+	player_detection.set_response_enter(_edge_fall, true)
 	_chunks = Global.chunks
 	tracker.define_bounds(Rect2(global_position, _breaker._size))
 	set_physics_process(false)
 
-func _on_area_entered(area: Area2D) -> void:
-	print(area.name)
-	if area.is_in_group("Player"):
-		_fall()
+
+func _edge_fall() -> void:
+	play("pre_fall")
+	animation_finished.connect(_fall, CONNECT_ONE_SHOT)
+
+func _fall() -> void:
+	stop()
+	set_physics_process(true)
 
 func _eval_callback(_angle: float) -> void:
 	print("Call")
-	_timer_touch = 0.01
-
-func _fall() -> void:
-	print("Falling")
-	set_physics_process(true)
+	#if _timer_touch == 0.0:
+		#_timer_touch = 0.01
 
 #Falling logic
 func _physics_process(delta: float) -> void:
@@ -45,7 +47,6 @@ func _physics_process(delta: float) -> void:
 	
 	global_position.y += FALLING_SPEED * delta
 	tracker.move(global_position)
-	
 	
 	if _timer_touch > 0.0:
 		_timer_touch += delta

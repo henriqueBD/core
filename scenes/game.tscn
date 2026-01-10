@@ -28,13 +28,13 @@ gravity_amount = 130.0
 gravity_multiplier_falling = 2.0
 jump_force = 105.0
 coyote_time = 0.5
-air_speed_max = 188.0
-air_speed_accel = 150.0
-ground_speed_max = 200.0
+air_speed_max = 130.0
+air_speed_accel = 300.0
+ground_speed_max = 140.0
 ground_speed_accel = 600.0
 _mining_level = 1
 _mining_offset = Vector2(0, 0)
 _swing_cooldown = 300.0
 
 [node name="PlayerSpawner" parent="." instance=ExtResource("7_0tnpc")]
-position = Vector2(-165, 625)
+position = Vector2(-66, 609)

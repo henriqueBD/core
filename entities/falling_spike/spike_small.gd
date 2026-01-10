@@ -1,10 +1,10 @@
-extends Node2D
+extends AnimatedSprite2D
 
 const MAX_FALLING_SEC: float = 1.0
 const DESTROY_AFTER_TOUCH_SEC: float = 0.1
 const FALLING_SPEED: float = 100
 
-static var _mask: BitMap = TerrainBreaker.create_bitmap("res://entities/falling_spike_small/falling_spike_small_mask.png")
+static var _mask: BitMap = TerrainBreaker.create_bitmap("res://entities/falling_spike/falling_spike_small_mask.png")
 
 var timer_self_destroy: float = 0.0
 var timer_touch: float = 0.0
@@ -15,12 +15,17 @@ var chunks: chunk_mng
 @onready var player_detection: PlayerDetection = $PlayerDetection
 
 func _ready() -> void:
-	player_detection.set_response_enter(_fall, true)
+	stop()
+	player_detection.set_response_enter(_edge_fall, true)
 	chunks = Global.chunks
 	set_process(false)
 
+func _edge_fall() -> void:
+	play("pre_fall")
+	animation_finished.connect(_fall, CONNECT_ONE_SHOT)
+
 func _fall() -> void:
-	print("falling")
+	stop()
 	set_process(true)
 
 #Falling logic

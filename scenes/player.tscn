@@ -130,9 +130,9 @@ position = Vector2(5, -11)
 shape = SubResource("RectangleShape2D_qhqgy")
 
 [node name="HitboxPickaxe" type="Area2D" parent="."]
+position = Vector2(15, -11)
 script = ExtResource("8_smehm")
 metadata/_custom_type_script = "uid://42bdabd4okfd"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HitboxPickaxe"]
-position = Vector2(15, -11)
 shape = SubResource("RectangleShape2D_fjrip")

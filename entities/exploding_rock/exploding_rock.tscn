@@ -1,9 +1,10 @@
-[gd_scene load_steps=20 format=3 uid="uid://bek4i585d7msv"]
+[gd_scene load_steps=21 format=3 uid="uid://bek4i585d7msv"]
 
 [ext_resource type="Texture2D" uid="uid://s7os70f5s0kx" path="res://entities/exploding_rock/exploding_rock_explode.png" id="1_kosj3"]
 [ext_resource type="Texture2D" uid="uid://dk6hb7eii8724" path="res://entities/exploding_rock/exploding_rock_idle.png" id="2_qrtjb"]
 [ext_resource type="Script" uid="uid://cj7isdo4wbs3x" path="res://entities/exploding_rock/exploding_object.gd" id="3_d6ftl"]
 [ext_resource type="Script" uid="uid://d1fx3521wflp4" path="res://scripts/hurtbox.gd" id="4_0pe40"]
+[ext_resource type="Script" uid="uid://42bdabd4okfd" path="res://scripts/hitbox.gd" id="4_x77b7"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_d6ftl"]
 atlas = ExtResource("1_kosj3")
@@ -103,7 +104,7 @@ animations = [{
 }]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_kosj3"]
-radius = 25.0
+radius = 40.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_x77b7"]
 size = Vector2(11.313709, 11.313709)
@@ -115,6 +116,8 @@ autoplay = "idle"
 script = ExtResource("3_d6ftl")
 
 [node name="ExplosionRadius" type="Area2D" parent="."]
+script = ExtResource("4_x77b7")
+metadata/_custom_type_script = "uid://42bdabd4okfd"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ExplosionRadius"]
 shape = SubResource("CircleShape2D_kosj3")

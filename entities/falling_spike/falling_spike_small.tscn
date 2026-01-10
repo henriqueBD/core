@@ -1,0 +1,81 @@
+[gd_scene load_steps=13 format=3 uid="uid://mqwh6xku2waw"]
+
+[ext_resource type="Script" uid="uid://cjiut40bfmnit" path="res://entities/falling_spike/spike_small.gd" id="1_3075u"]
+[ext_resource type="Texture2D" uid="uid://b5ccrv7hcsdio" path="res://entities/falling_spike/falling_spike_small_pre_fall.png" id="1_dgh6k"]
+[ext_resource type="Script" uid="uid://c4big2omgxqak" path="res://scripts/player_detection.gd" id="3_xsobv"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dgh6k"]
+atlas = ExtResource("1_dgh6k")
+region = Rect2(0, 0, 20, 17)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gscoq"]
+atlas = ExtResource("1_dgh6k")
+region = Rect2(20, 0, 20, 17)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8p3op"]
+atlas = ExtResource("1_dgh6k")
+region = Rect2(40, 0, 20, 17)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2lfid"]
+atlas = ExtResource("1_dgh6k")
+region = Rect2(60, 0, 20, 17)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_1r7oa"]
+atlas = ExtResource("1_dgh6k")
+region = Rect2(80, 0, 20, 17)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_x1w8s"]
+atlas = ExtResource("1_dgh6k")
+region = Rect2(100, 0, 20, 17)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5172l"]
+atlas = ExtResource("1_dgh6k")
+region = Rect2(120, 0, 20, 17)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_lvt0g"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dgh6k")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gscoq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8p3op")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_2lfid")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_1r7oa")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_x1w8s")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5172l")
+}],
+"loop": false,
+"name": &"pre_fall",
+"speed": 10.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_xsobv"]
+size = Vector2(30, 66)
+
+[node name="FallingSpikeSmall" type="AnimatedSprite2D"]
+sprite_frames = SubResource("SpriteFrames_lvt0g")
+animation = &"pre_fall"
+frame = 6
+frame_progress = 1.0
+centered = false
+script = ExtResource("1_3075u")
+
+[node name="PlayerDetection" type="Area2D" parent="."]
+script = ExtResource("3_xsobv")
+metadata/_custom_type_script = "uid://c4big2omgxqak"
+
+[node name="player_detection" type="CollisionShape2D" parent="PlayerDetection"]
+position = Vector2(10, 32)
+shape = SubResource("RectangleShape2D_xsobv")

@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://epa2cue00bh6"
+path="res://.godot/imported/falling_spike_small_mask.png-a19787415034f27efca74faf3aaceac8.image"
+
+[deps]
+
+source_file="res://entities/falling_spike/falling_spike_small_mask.png"
+dest_files=["res://.godot/imported/falling_spike_small_mask.png-a19787415034f27efca74faf3aaceac8.image"]
+
+[params]
+

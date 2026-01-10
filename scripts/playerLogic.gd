@@ -31,7 +31,6 @@ var _coyote_time_ms: int
 @onready var editor_logic: Editor = $Editor_logic
 @onready var hitbox_pickaxe: Hitbox = $HitboxPickaxe
 
-var _external_acell: Vector2
 var _horizontal_input: float
 var _vertical_input: float
 var _delta_time: float
@@ -46,6 +45,8 @@ var _breaker_downward: TerrainBreaker = TerrainBreaker.init([TerrainBreaker.crea
 var _is_swinging: bool = false
 var _last_swing_input: int
 
+var _hitbox_offset_x: float
+
 func _enter_tree() -> void:
 	self.set_physics_process(false)
 	Global.player_node = self
@@ -56,7 +57,8 @@ func _ready() -> void:
 	chunk = Global.chunks
 	set_mining_level(_mining_level)
 	_coyote_time_ms = int(coyote_time * 1000)
-	
+	_hitbox_offset_x = to_local(hitbox_pickaxe.global_position).x
+	print(_hitbox_offset_x)
 	Global.player_spawned.emit()
 
 func _exit_tree() -> void:
@@ -74,9 +76,6 @@ func _physics_process(delta: float) -> void:
 	
 	#if Input.is_action_just_pressed("hit_pickaxe"):
 		#hit_pickaxe()
-	
-	_external_acell = _external_acell.move_toward(
-		Vector2.ZERO, external_acceleration_fallof * delta)
 	
 	move_and_slide()
 
@@ -155,15 +154,12 @@ func _idle_state() -> void:
 		change_state(STATE.airborne)
 		return
 	
-	if _external_acell.y != 0:
-		change_state(STATE.walk)
-		return
-	if _external_acell.y < 0:
-		change_state(STATE.airborne)
-		return
-	
 	if _valid_swing_input():
 		_is_swinging = true
+		if animated_sprite_2d.flip_h:
+			animated_sprite_2d.offset.x = -4
+		else:
+			animated_sprite_2d.offset.x = 4
 		animated_sprite_2d.play("idle_swing")
 		animated_sprite_2d.animation_finished.connect(_idle_swing_end, CONNECT_ONE_SHOT)
 		_pickaxe_logic()
@@ -177,10 +173,12 @@ func _idle_state() -> void:
 		return
 
 func _idle_swing_end() -> void:
+	animated_sprite_2d.offset.x = 0
 	animated_sprite_2d.play("idle")
 
 func _idle_state_leave() -> void:
 	if animated_sprite_2d.animation_finished.is_connected(_idle_swing_end):
+		animated_sprite_2d.offset = Vector2.ZERO
 		_is_swinging = false
 		animated_sprite_2d.animation_finished.disconnect(_idle_swing_end)
 
@@ -253,6 +251,11 @@ func _airborne_state() -> void:
 	
 	if _valid_swing_input():
 		_is_swinging = true
+		_pickaxe_logic()
+		if animated_sprite_2d.flip_h:
+			animated_sprite_2d.offset = Vector2(-5, 3)
+		else:
+			animated_sprite_2d.offset = Vector2(5, 3)
 		animated_sprite_2d.play("airborne_swing")
 		animated_sprite_2d.animation_finished.connect(_airbone_swing_end, CONNECT_ONE_SHOT)
 	
@@ -279,11 +282,13 @@ func _airborne_state() -> void:
 		velocity.y += gravity_amount * _delta_time
 
 func _airbone_swing_end() -> void:
+	animated_sprite_2d.offset = Vector2.ZERO
 	_is_swinging = false
 	animated_sprite_2d.play("airborne")
 
 func _airborne_state_leave() -> void:
 	if animated_sprite_2d.animation_finished.is_connected(_airbone_swing_end):
+		animated_sprite_2d.offset = Vector2.ZERO
 		_is_swinging = false
 		animated_sprite_2d.animation_finished.disconnect(_airbone_swing_end)
 
@@ -313,14 +318,28 @@ func _pickaxe_logic() -> void:
 	rect.position = collision_shape_2d.to_global(rect.position)
 	if _vertical_input != 0:
 		if _vertical_input > 0:
-			_breaker_downward.break_terrain(Vector2(rect.position.x, rect.position.y + rect.size.y) + _mining_offset_vertical)
+			_breaker_downward.break_terrain(
+				_breaker_downward.center_bottom_to_top_left(Vector2(rect.position.x + rect.size.x / 2.0, rect.position.y + rect.size.y))
+			)
 		else:
-			_breaker_upward.break_terrain(rect.position + _mining_offset_vertical)
+			_breaker_upward.break_terrain(
+				_breaker_upward.center_top_to_top_left(rect.position + Vector2(rect.size.x, 0))
+			)
 	else:
 		if animated_sprite_2d.flip_h:
-			_breaker_sideway.break_terrain_flip_x_random(Vector2(rect.position - _mining_offset), true)
+			_breaker_sideway.break_terrain_random_flip_x(
+				_breaker_sideway.bottom_right_to_top_left(rect.position + Vector2(0, rect.size.y))
+			)
 		else:
-			_breaker_sideway.break_terrain_random(rect.position + _mining_offset)
+			_breaker_sideway.break_terrain_random(
+				_breaker_sideway.bottom_left_to_top_left(rect.position + rect.size)
+			)
+	
+	if animated_sprite_2d.flip_h:
+		hitbox_pickaxe.position.x = -_hitbox_offset_x
+	else:
+		hitbox_pickaxe.position.x = _hitbox_offset_x
+	
 	hitbox_pickaxe.hit_single_frame()
 
 func set_mining_level(new_level: int) -> void:

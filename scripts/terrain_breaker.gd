@@ -92,38 +92,41 @@ func request_eval() -> void:
 
 #region break terrain
 
-func break_terrain(global_coords_top_left: Vector2) -> void:
+func break_terrain(top_left_global: Vector2) -> void:
+	if top_left_global.distance_squared_to(_last_break) < distance_tolerance_squared: return
+	_last_break = top_left_global
+	Global.chunks.break_tiles_mask(top_left_global, _mask_original, force)
+
+
+func break_terrain_flip_x(global_coords_top_left: Vector2) -> void:
 	if global_coords_top_left.distance_squared_to(_last_break) < distance_tolerance_squared: return
 	_last_break = global_coords_top_left
-	Global.chunks.break_tiles_mask(global_coords_top_left, _mask_original, force)
+	#if flip_x:
+		#Global.chunks.break_tiles_mask(global_coords_top_left, _mask_flip_x, force)
+	#else:
+		#Global.chunks.break_tiles_mask(global_coords_top_left, _mask_original, force)
+	Global.chunks.break_tiles_mask(global_coords_top_left, _mask_flip_x, force)
 
 func break_terrain_random(global_coords_top_left: Vector2) -> void:
 	if global_coords_top_left.distance_squared_to(_last_break) < distance_tolerance_squared: return
 	_last_break = global_coords_top_left
 	Global.chunks.break_tiles_mask(global_coords_top_left, _mask_variations_original.pick_random(), force)
 
-func break_terrain_flip_x(global_coords_top_left: Vector2, flip_x: bool) -> void:
+func break_terrain_random_flip_x(global_coords_top_left: Vector2) -> void:
 	if global_coords_top_left.distance_squared_to(_last_break) < distance_tolerance_squared: return
 	_last_break = global_coords_top_left
-	if flip_x:
-		Global.chunks.break_tiles_mask(global_coords_top_left, _mask_flip_x, force)
-	else:
-		Global.chunks.break_tiles_mask(global_coords_top_left, _mask_original, force)
-
-func break_terrain_flip_x_random(global_coords_top_left: Vector2, flip_x: bool) -> void:
-	if global_coords_top_left.distance_squared_to(_last_break) < distance_tolerance_squared: return
-	_last_break = global_coords_top_left
-	if flip_x:
-		Global.chunks.break_tiles_mask(global_coords_top_left, _mask_variations_flip_x.pick_random(), force)
-	else:
-		Global.chunks.break_tiles_mask(global_coords_top_left, _mask_variations_original.pick_random(), force)
+	#if flip_x:
+		#Global.chunks.break_tiles_mask(global_coords_top_left, _mask_variations_flip_x.pick_random(), force)
+	#else:
+		#Global.chunks.break_tiles_mask(global_coords_top_left, _mask_variations_original.pick_random(), force)
+	Global.chunks.break_tiles_mask(global_coords_top_left, _mask_variations_flip_x.pick_random(), force)
 
 #endregion
 
 #region coordinate conversion
 
 func center_to_top_left(global_center: Vector2) -> Vector2:
-	return global_center - (_size / 2)
+	return global_center - (_size / 2.0)
 
 func top_right_to_top_left(top_right: Vector2) -> Vector2:
 	return top_right - Vector2(_size.x, 0)
@@ -133,5 +136,11 @@ func bottom_right_to_top_left(bottom_right: Vector2) -> Vector2:
 
 func bottom_left_to_top_left(bottom_left: Vector2) -> Vector2:
 	return bottom_left - Vector2(0, _size.y)
+
+func center_bottom_to_top_left(center_bottom: Vector2) -> Vector2:
+	return center_bottom - Vector2(_size.x / 2.0, 0)
+
+func center_top_to_top_left(center_top: Vector2) -> Vector2:
+	return center_top - Vector2(_size.x / 2.0, _size.y)
 
 #endregion

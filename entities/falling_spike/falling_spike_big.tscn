@@ -1,0 +1,86 @@
+[gd_scene load_steps=14 format=3 uid="uid://rsfg48fjjvum"]
+
+[ext_resource type="Texture2D" uid="uid://3o3yet1tosqx" path="res://entities/falling_spike/falling_spike_big_pre_fall.png" id="1_f5632"]
+[ext_resource type="Script" uid="uid://c2ev0uc7lspef" path="res://entities/falling_spike/spike_big.gd" id="1_p05s2"]
+[ext_resource type="Script" uid="uid://bda5luxh0va1o" path="res://scripts/dynamic_object_tracker.gd" id="3_x7xi0"]
+[ext_resource type="Script" uid="uid://c4big2omgxqak" path="res://scripts/player_detection.gd" id="4_7im7g"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_exse8"]
+atlas = ExtResource("1_f5632")
+region = Rect2(0, 0, 77, 86)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_q2qy2"]
+atlas = ExtResource("1_f5632")
+region = Rect2(77, 0, 77, 86)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_vuybg"]
+atlas = ExtResource("1_f5632")
+region = Rect2(154, 0, 77, 86)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_p538b"]
+atlas = ExtResource("1_f5632")
+region = Rect2(231, 0, 77, 86)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t0o6q"]
+atlas = ExtResource("1_f5632")
+region = Rect2(308, 0, 77, 86)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t787a"]
+atlas = ExtResource("1_f5632")
+region = Rect2(385, 0, 77, 86)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hrglv"]
+atlas = ExtResource("1_f5632")
+region = Rect2(462, 0, 77, 86)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_6l40m"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_exse8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_q2qy2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_vuybg")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_p538b")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t0o6q")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t787a")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hrglv")
+}],
+"loop": false,
+"name": &"pre_fall",
+"speed": 10.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_p05s2"]
+size = Vector2(133, 167)
+
+[node name="FallingSpikeBig" type="AnimatedSprite2D"]
+sprite_frames = SubResource("SpriteFrames_6l40m")
+animation = &"pre_fall"
+frame = 6
+frame_progress = 1.0
+centered = false
+script = ExtResource("1_p05s2")
+
+[node name="PlayerDetection" type="Area2D" parent="."]
+script = ExtResource("4_7im7g")
+metadata/_custom_type_script = "uid://c4big2omgxqak"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
+position = Vector2(37.5, 83.5)
+shape = SubResource("RectangleShape2D_p05s2")
+
+[node name="DynamicObjTracker" type="Node2D" parent="."]
+script = ExtResource("3_x7xi0")
+metadata/_custom_type_script = "uid://bda5luxh0va1o"

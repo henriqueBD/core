@@ -1,4 +1,5 @@
-##Used to safely move entities across the game, It handles deletion if it gets too far. 
+##Used to safely move entities across the game, It handles deletion if it gets too far.
+##Also used for entities that should not respawn
 class_name DynamicObjTracker
 extends Node2D
 

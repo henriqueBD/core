@@ -9,18 +9,13 @@ static func init_dictionaty(path: String) -> void:
 	_init_dictionaty_helper(path)
 
 static func _init_dictionaty_helper(path: String) -> void:
-	var directories: PackedStringArray = []
-	
 	for file: String in ResourceLoader.list_directory(path):
 		if file.ends_with(".tscn"):
 			var scene_name: String = file.trim_suffix(".tscn")
 			var scene_path: NodePath = NodePath("%s/%s" % [path , file])
 			_id_to_path[hash_string(scene_name)] = scene_path
 		elif file.ends_with("/"):
-			directories.append(file)
-	
-	for d: String in directories:
-		_init_dictionaty_helper("%s/%s" % [path, d])
+			_init_dictionaty_helper("%s/%s" % [path, file.trim_suffix("/")])
 
 static func vibe_check() -> void:
 	for path: NodePath in _id_to_path.values():

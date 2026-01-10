@@ -322,23 +322,26 @@ func eval_break_area_mask(global_top_left: Vector2, mask: BitMap, mining_force: 
 	)
 	
 	var chunks: Rect2i = _get_rect_bounds(global_top_left, mask.get_size())
-	var num_threads: int = 0
 	
-	##CRITICAL: thread lock here
-	_counter_mutex_eval.lock()
-	_counter_mutex_break.lock()
+	_break_id[_curr_id] = [0, Vector2.ZERO, callback]
+	_break_id[_curr_id + 1] = [0, world_rect, false]
 	
 	for x: int in range(chunks.position.x, chunks.size.x + 1):
 		for y: int in range(chunks.position.y, chunks.size.y + 1):
 			var key: Vector2i = Vector2i(x, y)
 			if _chunks_dict.has(key):
-				num_threads += 1
+				
+				_counter_mutex_eval.lock()
+				_break_id[_curr_id][0] += 1
+				_counter_mutex_eval.unlock()
+				
+				_counter_mutex_break.lock()
+				_break_id[_curr_id + 1][0] += 1
+				_counter_mutex_break.unlock()
+				
 				_chunks_dict[key].eval_break_tiles_mask(global_top_left, mask, mining_force, eval_force, _curr_id)
 	
-	if num_threads > 0:
-		_break_id[_curr_id] = [num_threads, Vector2.ZERO, callback]
-		_break_id[_curr_id + 1] = [num_threads, world_rect, false]
-		_curr_id += 2
+	_curr_id += 2
 	
 	_counter_mutex_break.unlock()
 	_counter_mutex_eval.unlock()
@@ -388,22 +391,19 @@ func break_tiles_mask(global_top_left: Vector2, mask: BitMap, mining_force: int)
 	)
 	
 	var chunks: Rect2i = _get_rect_bounds(global_top_left, mask.get_size())
-	var num_threads: int = 0
 	
-	_counter_mutex_break.lock()
+	_break_id[_curr_id] = [0, world_rect, false]
 	
 	for x: int in range(chunks.position.x, chunks.size.x + 1):
 		for y: int in range(chunks.position.y, chunks.size.y + 1):
 			var key: Vector2i = Vector2i(x, y)
 			if _chunks_dict.has(key):
-				num_threads += 1
 				_chunks_dict[key].break_tiles_mask(global_top_left, mask, mining_force, _curr_id)
+				_counter_mutex_break.lock()
+				_break_id[_curr_id][0] += 1
+				_counter_mutex_break.unlock()
 	
-	if num_threads > 0:
-		_break_id[_curr_id] = [num_threads, world_rect, false]
-		_curr_id += 1
-	
-	_counter_mutex_break.unlock()
+	_curr_id += 1
 
 ## TODO: thread unsafe ??
 func break_tiles_post(id: int, broke_tiles: bool) -> void:
@@ -526,6 +526,9 @@ func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void
 	for i: int in range(len(entities.id_static)):
 		var instance_scene: PackedScene = Entity_loader.load_scene(entities.id_static[i])
 		var instance: Node2D = instance_scene.instantiate()
+		if _is_dynamic_obj(instance):
+			print_rich("[color=red]Dynamic object found in static array[/color]")
+			instance.set_meta("is_dynamic", true)
 		var instance_global_pos: Vector2 = original_chunk.to_global(entities.pos_static[i])
 		instance.set_meta("original_pos", instance_global_pos)
 		main_node.add_child(instance)
@@ -538,6 +541,12 @@ func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void
 		instance.set_meta("is_dynamic", true)
 		main_node.add_child(instance)
 		instance.owner = main_node
+
+func _is_dynamic_obj(instance: Node2D) -> bool:
+	if instance is tracking_obj: return true
+	for child: Node in instance.get_children():
+		if _is_dynamic_obj(child): return true
+	return false
 
 func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 	for i: int in range(len(objs.id_static)):
