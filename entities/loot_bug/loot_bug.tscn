@@ -1,10 +1,12 @@
-[gd_scene load_steps=11 format=3 uid="uid://bnpq321cyrjfa"]
+[gd_scene load_steps=21 format=3 uid="uid://bnpq321cyrjfa"]
 
 [ext_resource type="Script" uid="uid://bf5ghwwo3g866" path="res://entities/loot_bug/loot_bug_logic.gd" id="1_h716r"]
 [ext_resource type="Texture2D" uid="uid://docxvtss1rigb" path="res://entities/loot_bug/loot_bug.png" id="1_ow0or"]
 [ext_resource type="Script" uid="uid://bda5luxh0va1o" path="res://scripts/dynamic_object_tracker.gd" id="2_h716r"]
 [ext_resource type="Texture2D" uid="uid://b233646f7crxr" path="res://entities/loot_bug/loot_bug_animation.png" id="3_e0mm0"]
+[ext_resource type="Texture2D" uid="uid://b14ptkq6pneqn" path="res://entities/loot_bug/loot_bug_explode.png" id="4_uf8ug"]
 [ext_resource type="Script" uid="uid://c4big2omgxqak" path="res://scripts/player_detection.gd" id="5_8gg5t"]
+[ext_resource type="Script" uid="uid://d1fx3521wflp4" path="res://scripts/hurtbox.gd" id="7_n0e33"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_uf8ug"]
 atlas = ExtResource("3_e0mm0")
@@ -13,6 +15,34 @@ region = Rect2(0, 0, 29, 14)
 [sub_resource type="AtlasTexture" id="AtlasTexture_n0e33"]
 atlas = ExtResource("3_e0mm0")
 region = Rect2(29, 0, 29, 14)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_fe66l"]
+atlas = ExtResource("4_uf8ug")
+region = Rect2(0, 0, 29, 14)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_74stp"]
+atlas = ExtResource("4_uf8ug")
+region = Rect2(29, 0, 29, 14)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qfcri"]
+atlas = ExtResource("4_uf8ug")
+region = Rect2(58, 0, 29, 14)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3k1ip"]
+atlas = ExtResource("4_uf8ug")
+region = Rect2(87, 0, 29, 14)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_44ryb"]
+atlas = ExtResource("4_uf8ug")
+region = Rect2(116, 0, 29, 14)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bxgud"]
+atlas = ExtResource("4_uf8ug")
+region = Rect2(145, 0, 29, 14)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ukyxj"]
+atlas = ExtResource("4_uf8ug")
+region = Rect2(174, 0, 29, 14)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_fe66l"]
 animations = [{
@@ -26,6 +56,32 @@ animations = [{
 "loop": true,
 "name": &"default",
 "speed": 4.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_fe66l")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_74stp")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qfcri")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3k1ip")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_44ryb")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bxgud")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ukyxj")
+}],
+"loop": false,
+"name": &"explode",
+"speed": 10.0
 }]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_ai1md"]
@@ -34,6 +90,9 @@ height = 22.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_74stp"]
 size = Vector2(12, 2.375)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_s3230"]
+size = Vector2(26, 12)
 
 [node name="LootBug" type="CharacterBody2D"]
 script = ExtResource("1_h716r")
@@ -45,8 +104,6 @@ texture = ExtResource("1_ow0or")
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = SubResource("SpriteFrames_fe66l")
 autoplay = "default"
-frame = 1
-frame_progress = 0.44306988
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, 1)
@@ -64,3 +121,10 @@ metadata/_custom_type_script = "uid://c4big2omgxqak"
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
 position = Vector2(0, -3.8125)
 shape = SubResource("RectangleShape2D_74stp")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+script = ExtResource("7_n0e33")
+metadata/_custom_type_script = "uid://d1fx3521wflp4"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("RectangleShape2D_s3230")

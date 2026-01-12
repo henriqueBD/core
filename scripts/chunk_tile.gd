@@ -400,7 +400,7 @@ func change_tiles(destroy_rect_world: Rect2, new_type: TILE_TYPE) -> void:
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
 			_set_tile(x_pos, y_pos, new_type)
 	
-	#_recalculate_area_accurate(destroy_rect_world)
+	_recalculate_area_accurate(destroy_rect_world)
 	tex.update(img)
 	changed_terrain = true
 

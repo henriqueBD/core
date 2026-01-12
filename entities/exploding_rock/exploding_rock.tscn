@@ -131,4 +131,4 @@ rotation = 0.7853982
 scale = Vector2(0.99999994, 0.99999994)
 shape = SubResource("RectangleShape2D_x77b7")
 
-[connection signal="hit_signal" from="Hurtbox" to="." method="on_hit"]
+[connection signal="hit" from="Hurtbox" to="." method="on_hit"]

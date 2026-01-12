@@ -226,7 +226,10 @@ func _load_chunk_thread_safe(chunk_to_load_coords: Vector2i) -> void:
 			instances_static = instances[0]
 			instances_dynamic = instances[1]
 			if !instances_dynamic.is_empty():
-				_convert_obj_pos_to_chunk_local(instances_dynamic, chunk_to_load_coords)
+				#_convert_obj_pos_to_chunk_local(instances_dynamic, chunk_to_load_coords)
+				var coords_as_vector2: Vector2 = Vector2(chunk_to_load_coords)
+				for obj: Node2D in instances_dynamic:
+					obj.global_position += coords_as_vector2 * Vector2(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE)
 	
 	call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
 	new_chunk_instance.initialize_deffered(

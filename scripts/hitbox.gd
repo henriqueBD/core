@@ -9,4 +9,4 @@ func _ready() -> void:
 
 func hit_single_frame() -> void:
 	for area: Hurtbox in get_overlapping_areas():
-		if area: area.hit_signal.emit(1)
+		if area: area.hit.emit(1)

@@ -2,7 +2,7 @@ class_name Hurtbox
 extends Area2D
 
 @warning_ignore("unused_signal")
-signal hit_signal(damage: float)
+signal hit(damage: float)
 
 func _ready() -> void:
 	monitorable = true
