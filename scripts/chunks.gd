@@ -24,12 +24,12 @@ var _player: player_character
 @export var _chunks_load_radius_editor: int = 5
 @export var save_on_exit: bool
 
-
 var folderPath: String = FOLDER_PATH_RELEASE
 var _chunks_load_radius: int
 
 var _chunks_dict: Dictionary[Vector2i, chunk_tile] = {}
 var _dynamic_entities_loaded: Dictionary[Vector3, bool] = {}
+var _static_entities_skip_load: Dictionary[Vector2, bool] = {}
 var _unloaded_chunks_terrain_modified: Dictionary[Vector2i, BitMap] = {}
 var _chunks_dict_mutex: Mutex = Mutex.new()
 var _chunks_buff_dict: Dictionary[Vector2i, bool]
@@ -213,7 +213,6 @@ func _load_chunk_thread_safe(chunk_to_load_coords: Vector2i) -> void:
 	var terrain_collision: Array[CollisionPolygon2D] = chunk_tile.get_terrain_collision(terrain_mask)
 	
 	#Load chunk entities
-	var instances: Array[Array] = [[], []]
 	var instances_static: Array[Node2D]
 	var instances_dynamic: Array[Node2D]
 	var entities: obj_chunk = obj_chunk.deserialize(chunk_to_load_coords)
@@ -221,10 +220,26 @@ func _load_chunk_thread_safe(chunk_to_load_coords: Vector2i) -> void:
 	if !entities.id_static.is_empty() or !entities.id_dynamic.is_empty():
 		if Engine.is_editor_hint():
 			add_objects_editor(new_chunk_instance, entities)
+			
 		else:
-			instances = _get_objects(entities)
-			instances_static = instances[0]
-			instances_dynamic = instances[1]
+			
+			for i: int in range(len(entities.id_static)):
+				if _static_entities_skip_load.has(entities.pos_static[i] + Vector2(chunk_to_load_coords) * Globals.CHUNK_SIDE): continue
+				var instance_scene: PackedScene = Entity_loader.load_scene(entities.id_static[i])
+				var instance: Node2D = instance_scene.instantiate()
+				instance.position = entities.pos_static[i]
+				instances_static.append(instance)
+			
+			for i: int in range(len(entities.id_dynamic)):
+				var unique_id: Vector3 = Vector3(entities.pos_dynamic[i].x, entities.pos_dynamic[i].y, entities.id_dynamic[i])
+				if _dynamic_entities_loaded.has(unique_id): continue
+				_dynamic_entities_loaded[unique_id] = true
+				var instance_scene: PackedScene = Entity_loader.load_scene(entities.id_dynamic[i])
+				var instance: Node2D = instance_scene.instantiate()
+				instance.position = entities.pos_dynamic[i]
+				instance.set_meta(meta_unique_id, unique_id)
+				instances_dynamic.append(instance)
+			
 			if !instances_dynamic.is_empty():
 				#_convert_obj_pos_to_chunk_local(instances_dynamic, chunk_to_load_coords)
 				var coords_as_vector2: Vector2 = Vector2(chunk_to_load_coords)
@@ -567,11 +582,16 @@ func add_objects(chunk_to_add: chunk_tile, objs: obj_chunk) -> void:
 func unregister_dynamic_obj(unique_id: Vector3) -> void:
 	_dynamic_entities_loaded.erase(unique_id)
 
+## For objects that despawn, it's not possible to have entities with the same global origin point
+func set_no_respawn(global_pos: Vector2) -> void:
+	_static_entities_skip_load[global_pos] = true
+
 func _get_objects(objs: obj_chunk) -> Array[Array]:
 	var instances_static: Array[Node2D] = []
 	var instances_dynamic: Array[Node2D] = []
 	
 	for i: int in range(len(objs.id_static)):
+		if _static_entities_skip_load.has(objs.pos_static[i]): continue
 		var instance_scene: PackedScene = Entity_loader.load_scene(objs.id_static[i])
 		var instance: Node2D = instance_scene.instantiate()
 		instance.global_position = objs.pos_static[i]
@@ -632,11 +652,11 @@ func _cleanup() -> void:
 	_loader_end()
 	
 	_unloaded_chunks_terrain_modified.clear()
+	_static_entities_skip_load.clear()
 	_dynamic_entities_loaded.clear()
 	_chunks_buff_dict.clear()
 	_chunks_dict.clear()
 	_break_id.clear()
-	
 
 func _exit_tree() -> void:
 	_loader_end()

@@ -27,3 +27,11 @@ func _on_area_exit(area: Area2D) -> void:
 		_response_exit.call()
 		if _one_shot_exit: 
 			queue_free()
+
+func deactivate() -> void:
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
+
+func activate() -> void:
+	set_deferred("monitoring", true)
+	set_deferred("monitorable", true)

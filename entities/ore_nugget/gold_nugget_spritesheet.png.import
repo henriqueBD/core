@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c68o5hw3bsck6"
-path="res://.godot/imported/cog_preview.png-5902d50c86d4fc688a29a533147ce517.ctex"
+uid="uid://pqoydvirlxkp"
+path="res://.godot/imported/gold_nugget_spritesheet.png-5cc10a3fc43fb87279502f035a0ac639.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://entities/cog/cog_preview.png"
-dest_files=["res://.godot/imported/cog_preview.png-5902d50c86d4fc688a29a533147ce517.ctex"]
+source_file="res://entities/ore_nugget/gold_nugget_spritesheet.png"
+dest_files=["res://.godot/imported/gold_nugget_spritesheet.png-5cc10a3fc43fb87279502f035a0ac639.ctex"]
 
 [params]
 

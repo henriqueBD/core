@@ -11,11 +11,9 @@ static var _squished_sprite: Texture2D = load("res://entities/loot_bug/loot_bug_
 
 var _gravity: float
 var _direction: float = 1.0
+var _is_exploding: bool = false
 
 func _ready() -> void:
-	var hurtbox: Hurtbox = $Hurtbox
-	hurtbox.hit.connect(_on_hit, CONNECT_ONE_SHOT)
-	
 	_gravity = Global.gravity
 	dynamic_obj_tracker.define_bounds(Rect2(global_position, Vector2(1,1)))
 	var player_detection: PlayerDetection = $PlayerDetection
@@ -23,6 +21,9 @@ func _ready() -> void:
 	player_detection.set_response_exit(_player_left, false)
 
 func _on_hit(_damage: float) -> void:
+	if _is_exploding: return
+	
+	_is_exploding = true
 	sprite_2d.hide()
 	set_physics_process(false)
 	animated_sprite_2d.play("explode")
