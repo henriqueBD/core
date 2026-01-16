@@ -187,7 +187,6 @@ func _loader_process() -> void:
 			if should_skip_save():
 				chunk_to_remove._terrain_really_changed = false
 				chunk_to_remove.changed_terrain = false
-				chunk_to_remove.changed_entities = false
 			
 			chunk_to_remove.unload()
 			chunk_to_remove.queue_free()
@@ -524,7 +523,6 @@ func _unload_chunk(unloadCoords: Vector2i) -> void:
 	if should_skip_save():
 		chunk_to_remove._terrain_really_changed = false
 		chunk_to_remove.changed_terrain = false
-		chunk_to_remove.changed_entities = false
 	
 	_chunks_dict_mutex.lock()
 	_chunks_dict.erase(unloadCoords)
@@ -561,7 +559,7 @@ func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void
 		instance.owner = main_node
 
 func _is_dynamic_obj(instance: Node2D) -> bool:
-	if instance is tracking_obj: return true
+	if instance as tracking_obj != null: return true
 	for child: Node in instance.get_children():
 		if _is_dynamic_obj(child): return true
 	return false

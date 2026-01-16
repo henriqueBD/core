@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://btjid5jrbfthf"
-path="res://.godot/imported/walk.png-7c517a3770d514d0bd48f1cf606f13a7.ctex"
+uid="uid://dyvkc4lmhsu0t"
+path="res://.godot/imported/J_key.png-bc102e200f995526c67c6eb5bbc79516.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/walk.png"
-dest_files=["res://.godot/imported/walk.png-7c517a3770d514d0bd48f1cf606f13a7.ctex"]
+source_file="res://entities/tutorial/J_key.png"
+dest_files=["res://.godot/imported/J_key.png-bc102e200f995526c67c6eb5bbc79516.ctex"]
 
 [params]
 

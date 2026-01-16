@@ -146,7 +146,12 @@ func _idle_state_enter() -> void:
 		return
 		
 	_check_looking_dir()
-	animated_sprite_2d.play("idle")
+	
+	if Global.picked_pickaxe:
+		animated_sprite_2d.play("idle")
+	else:
+		animated_sprite_2d.play("idle_no_pickaxe")
+	
 	velocity.x = 0.0
 
 func _idle_state() -> void:
@@ -174,7 +179,10 @@ func _idle_state() -> void:
 
 func _idle_swing_end() -> void:
 	animated_sprite_2d.offset.x = 0
-	animated_sprite_2d.play("idle")
+	if Global.picked_pickaxe:
+		animated_sprite_2d.play("idle")
+	else:
+		animated_sprite_2d.play("idle_no_pickaxe")
 
 func _idle_state_leave() -> void:
 	if animated_sprite_2d.animation_finished.is_connected(_idle_swing_end):
@@ -185,7 +193,10 @@ func _idle_state_leave() -> void:
 # ---------- Walk ----------
 
 func _walk_state_enter() -> void:
-	animated_sprite_2d.play("walk")
+	if Global.picked_pickaxe:
+		animated_sprite_2d.play("walk")
+	else:
+		animated_sprite_2d.play("walk_no_pickaxe")
 
 func _walk_state() -> void:
 	if !is_on_floor():
@@ -241,7 +252,10 @@ func _block_coyote_time() -> void:
 	_airborne_time_enter = -1
 
 func _airborne_state_enter() -> void:
-	animated_sprite_2d.play("airborne")
+	if Global.picked_pickaxe:
+		animated_sprite_2d.play("airborne")
+	else:
+		animated_sprite_2d.play("airborne_no_pickaxe")
 
 func _airborne_state() -> void:
 	if is_on_floor():
@@ -284,7 +298,10 @@ func _airborne_state() -> void:
 func _airbone_swing_end() -> void:
 	animated_sprite_2d.offset = Vector2.ZERO
 	_is_swinging = false
-	animated_sprite_2d.play("airborne")
+	if Global.picked_pickaxe:
+		animated_sprite_2d.play("airborne")
+	else:
+		animated_sprite_2d.play("airborne_no_pickaxe")
 
 func _airborne_state_leave() -> void:
 	if animated_sprite_2d.animation_finished.is_connected(_airbone_swing_end):
@@ -295,6 +312,7 @@ func _airborne_state_leave() -> void:
 #endregion
 
 func _valid_swing_input() -> bool:
+	#if !Global.picked_pickaxe: return false
 	var time_now: int = Time.get_ticks_msec()
 	if Input.is_action_just_pressed("hit_pickaxe") and _last_swing_input + _swing_cooldown < time_now:
 		_last_swing_input = time_now

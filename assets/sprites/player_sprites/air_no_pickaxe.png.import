@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cdb8jph41uwyn"
-path="res://.godot/imported/breakFoward.png-ec5b9a27e21f7ea1c4bfab81b58471d2.ctex"
+uid="uid://jxdjb6ehabvl"
+path="res://.godot/imported/air_no_pickaxe.png-bad5d31ba43da78a17e0253559054002.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/breakFoward.png"
-dest_files=["res://.godot/imported/breakFoward.png-ec5b9a27e21f7ea1c4bfab81b58471d2.ctex"]
+source_file="res://assets/sprites/player_sprites/air_no_pickaxe.png"
+dest_files=["res://.godot/imported/air_no_pickaxe.png-bad5d31ba43da78a17e0253559054002.ctex"]
 
 [params]
 

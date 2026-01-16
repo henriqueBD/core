@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b6g8swi760vjj"
-path="res://.godot/imported/spherealbedo.png-c34cf32b06a07a8dc2ea84a29471ddf8.ctex"
+uid="uid://brbhq7ec16suf"
+path="res://.godot/imported/walk-sheet_no_pickaxe.png-d8a63f9e3b7dca546503f9d2b355367f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/spherealbedo.png"
-dest_files=["res://.godot/imported/spherealbedo.png-c34cf32b06a07a8dc2ea84a29471ddf8.ctex"]
+source_file="res://assets/sprites/player_sprites/walk-sheet_no_pickaxe.png"
+dest_files=["res://.godot/imported/walk-sheet_no_pickaxe.png-d8a63f9e3b7dca546503f9d2b355367f.ctex"]
 
 [params]
 

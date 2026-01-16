@@ -1,0 +1,106 @@
+[gd_scene load_steps=12 format=3 uid="uid://bg7tic3ejv4yh"]
+
+[ext_resource type="Script" uid="uid://5pu0vjn5r5f5" path="res://entities/enemies/grunt/grunt_logic.gd" id="1_5nj06"]
+[ext_resource type="Texture2D" uid="uid://cqpkqpio0e3ts" path="res://entities/enemies/grunt/grunt_sprites.png" id="1_rqvb5"]
+[ext_resource type="Script" uid="uid://42bdabd4okfd" path="res://scripts/hitbox.gd" id="2_5nj06"]
+[ext_resource type="Script" uid="uid://c4big2omgxqak" path="res://scripts/player_detection.gd" id="3_yv57y"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_pypjm"]
+size = Vector2(25, 11)
+
+[sub_resource type="Animation" id="Animation_etbql"]
+length = 0.001
+
+[sub_resource type="Animation" id="Animation_54yir"]
+resource_name = "attack"
+tracks/0/type = "method"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Hitbox")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0.6),
+"transitions": PackedFloat32Array(1),
+"values": [{
+"args": [],
+"method": &"hit_single_frame"
+}]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Sprite2D:frame")
+tracks/1/interp = 0
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.2, 0.4, 0.6, 0.8),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 1,
+"values": [4, 5, 6, 7, 4]
+}
+
+[sub_resource type="Animation" id="Animation_3dwsu"]
+resource_name = "walk"
+length = 0.8
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.2, 0.4, 0.6),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [0, 1, 2, 3]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_4yjg3"]
+_data = {
+&"RESET": SubResource("Animation_etbql"),
+&"attack": SubResource("Animation_54yir"),
+&"walk": SubResource("Animation_3dwsu")
+}
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_8f1vd"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_udnhy"]
+size = Vector2(95, 20)
+
+[node name="GlyphidGrunt" type="CharacterBody2D"]
+script = ExtResource("1_5nj06")
+_walk_speed = 1000.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(12.5, 12.5)
+shape = SubResource("RectangleShape2D_pypjm")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("1_rqvb5")
+centered = false
+hframes = 4
+vframes = 2
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_4yjg3")
+}
+speed_scale = 1.65
+
+[node name="Hitbox" type="Area2D" parent="."]
+script = ExtResource("2_5nj06")
+metadata/_custom_type_script = "uid://42bdabd4okfd"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
+position = Vector2(20, 10)
+shape = SubResource("CircleShape2D_8f1vd")
+
+[node name="PlayerDetection" type="Area2D" parent="."]
+script = ExtResource("3_yv57y")
+metadata/_custom_type_script = "uid://c4big2omgxqak"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
+position = Vector2(70.5, 9)
+shape = SubResource("RectangleShape2D_udnhy")

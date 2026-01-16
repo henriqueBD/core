@@ -1,0 +1,20 @@
+[gd_scene load_steps=5 format=3 uid="uid://hdl1y4go58sa"]
+
+[ext_resource type="Texture2D" uid="uid://6u0o4a10m3a1" path="res://entities/tutorial/space_bar.png" id="1_myfmf"]
+[ext_resource type="Script" uid="uid://cp5u44ryflbeu" path="res://entities/tutorial/tutorial_logic.gd" id="2_kyr0o"]
+[ext_resource type="Script" uid="uid://c4big2omgxqak" path="res://scripts/player_detection.gd" id="3_h41cw"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dpixr"]
+size = Vector2(82, 20)
+
+[node name="JumpTutorial" type="Sprite2D"]
+texture = ExtResource("1_myfmf")
+script = ExtResource("2_kyr0o")
+
+[node name="PlayerDetection" type="Area2D" parent="."]
+script = ExtResource("3_h41cw")
+metadata/_custom_type_script = "uid://c4big2omgxqak"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
+position = Vector2(1, 31)
+shape = SubResource("RectangleShape2D_dpixr")

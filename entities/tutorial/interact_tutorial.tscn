@@ -1,0 +1,20 @@
+[gd_scene load_steps=5 format=3 uid="uid://cok5akvelj11e"]
+
+[ext_resource type="Texture2D" uid="uid://d6nm2iq0kqed" path="res://entities/tutorial/E_key.png" id="1_dwv0g"]
+[ext_resource type="Script" uid="uid://cp5u44ryflbeu" path="res://entities/tutorial/tutorial_logic.gd" id="2_kbm2g"]
+[ext_resource type="Script" uid="uid://c4big2omgxqak" path="res://scripts/player_detection.gd" id="3_vlrre"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hfmvn"]
+radius = 17.0
+
+[node name="InteractTutorial" type="Sprite2D"]
+texture = ExtResource("1_dwv0g")
+script = ExtResource("2_kbm2g")
+
+[node name="PlayerDetection" type="Area2D" parent="."]
+position = Vector2(0, 22)
+script = ExtResource("3_vlrre")
+metadata/_custom_type_script = "uid://c4big2omgxqak"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
+shape = SubResource("CircleShape2D_hfmvn")

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://c84376oafb6m4"]
+
+[ext_resource type="Texture2D" uid="uid://rwntnt48qc5q" path="res://assets/sprites/pickaxe_upgrade_background.png" id="1_ra8rt"]
+
+[node name="Node2D" type="Sprite2D"]
+z_index = -3
+texture = ExtResource("1_ra8rt")
+centered = false

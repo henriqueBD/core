@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bd8674w0j3cwi"
-path="res://.godot/imported/idle.png-1800f7c06d5908763d656a0f3f46e8e3.ctex"
+uid="uid://cqpkqpio0e3ts"
+path="res://.godot/imported/grunt_sprites.png-4054cc32bc1b6041abef5f3cca26199f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/idle.png"
-dest_files=["res://.godot/imported/idle.png-1800f7c06d5908763d656a0f3f46e8e3.ctex"]
+source_file="res://entities/enemies/grunt/grunt_sprites.png"
+dest_files=["res://.godot/imported/grunt_sprites.png-4054cc32bc1b6041abef5f3cca26199f.ctex"]
 
 [params]
 

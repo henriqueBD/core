@@ -37,3 +37,5 @@ var chunks: chunk_mng
 var player_node: Node2D
 
 var gravity: float = 200
+
+var picked_pickaxe: bool = false

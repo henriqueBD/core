@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cg4erxe42wvdu"
-path="res://.godot/imported/spherenormal.png-e90fc9aab3e500011cb2ea4b39a9da96.ctex"
+uid="uid://ojifbqmymuxp"
+path="res://.godot/imported/idle_no_pickaxe.png-6d8a762bd694b487e10ae82c3f88b49f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/spherenormal.png"
-dest_files=["res://.godot/imported/spherenormal.png-e90fc9aab3e500011cb2ea4b39a9da96.ctex"]
+source_file="res://assets/sprites/player_sprites/idle_no_pickaxe.png"
+dest_files=["res://.godot/imported/idle_no_pickaxe.png-6d8a762bd694b487e10ae82c3f88b49f.ctex"]
 
 [params]
 

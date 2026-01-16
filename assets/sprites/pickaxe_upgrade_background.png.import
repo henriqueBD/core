@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cyqoeupw0vlha"
-path="res://.godot/imported/jump.png-3dbc7999c6ae3445588bd4e2733ed604.ctex"
+uid="uid://rwntnt48qc5q"
+path="res://.godot/imported/pickaxe_upgrade_background.png-a4d485468c80855660b952b324cf1c15.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/jump.png"
-dest_files=["res://.godot/imported/jump.png-3dbc7999c6ae3445588bd4e2733ed604.ctex"]
+source_file="res://assets/sprites/pickaxe_upgrade_background.png"
+dest_files=["res://.godot/imported/pickaxe_upgrade_background.png-a4d485468c80855660b952b324cf1c15.ctex"]
 
 [params]
 

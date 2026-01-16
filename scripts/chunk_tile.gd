@@ -19,7 +19,7 @@ var global_pos_cached: Vector2
 
 var entities: obj_chunk
 
-var _breaker_thread: Thread = Thread.new()
+var _breaker_thread: Thread
 
 var _collision_RID: RID
 var _poligons_RID: Array[RID] = []
@@ -93,6 +93,8 @@ func _initialize_deffered_helper(
 	sprite: ImageTexture, instances_static: Array[Node2D], instances_dynamic: Array[Node2D]) -> void:
 	
 	set_process(false)
+	
+	_breaker_thread = Thread.new()
 	
 	z_index = Globals.LAYER_CHUNK_TERRAIN
 	coords = key
@@ -607,92 +609,9 @@ func _fix_borders_helper(coord_tmp: Vector2i) -> void:
 
 #endregion
 
-#region Ray Cast
-
-const ignoreTile: TILE_TYPE = TILE_TYPE.AIR
-const no_collision: float = -INF
-	
-func rayCastDown(world_pos: Vector2, dist: int) -> float:
-	var grid_pos: Vector2i = world_to_grid(world_pos)
-	var x_check: int = grid_pos.x
-	for y: int in range(floori(grid_pos.y), floori(grid_pos.y) + dist + 1):
-		if _get_tile_safe(x_check, y) != ignoreTile:
-			return grid_to_world(Vector2i(x_check, y), TILE_POS.TOP).y
-	return no_collision
-
-func rayCastUp(world_pos: Vector2, dist: int) -> float:
-	var grid_pos: Vector2i = world_to_grid(world_pos)
-	var x_check: int = grid_pos.x
-	for y: int in range(floori(grid_pos.y), floori(grid_pos.y) - dist - 1, -1):
-		if _get_tile_safe(x_check, y) != ignoreTile:
-			return grid_to_world(Vector2i(x_check, y), TILE_POS.BOTTOM).y
-	return no_collision
-
-func rayCastLeft(world_pos: Vector2, dist: int) -> float:
-	var grid_pos: Vector2i = world_to_grid(world_pos)
-	var y_check: int = grid_pos.y
-	for x: int in range(grid_pos.x, grid_pos.x - dist, -1):
-		if _get_tile_safe(x, y_check) != ignoreTile:
-			return grid_to_world(Vector2(x, y_check), TILE_POS.RIGHT).x
-	return no_collision
-
-func rayCastRight(world_pos: Vector2, dist: int) -> float:
-	var grid_pos: Vector2i = world_to_grid(world_pos)
-	var y_check: int = grid_pos.y
-	for x: int in range(grid_pos.x, grid_pos.x + dist):
-		if _get_tile_safe(x, y_check) != ignoreTile:
-			return grid_to_world(Vector2(x, y_check), TILE_POS.LEFT).x
-	return no_collision
-
-func ray_cast_general(world_start: Vector2, world_end: Vector2) -> float:
-	var grid_start: Vector2i = world_to_grid(world_start)
-	var grid_end: Vector2i = world_to_grid(world_end)
-	
-	var dx: int = abs(grid_end.x - grid_start.x)
-	var dy: int = abs(grid_end.y - grid_start.y)
-	
-	var x: int = grid_start.x
-	var y: int = grid_start.y
-	
-	var sx: int = 1 if grid_end.x > grid_start.x else -1
-	var sy: int = 1 if grid_end.y > grid_start.y else -1
-	
-	var err: int = (dx if dx > dy else -dy) >> 1
-	
-	while true:
-		if _get_tile_safe(x, y) != ignoreTile:
-			# Wall hit — estimate world position at tile center
-			var hit_pos: Vector2 = Vector2(x + 0.5, y + 0.5)
-			return world_start.distance_to(hit_pos)
-	
-		if x == grid_end.x and y == grid_end.y:
-			break
-	
-		var e2: int = err
-		if e2 > -dx:
-			err -= dy
-			x += sx
-		if e2 < dy:
-			err += dx
-			y += sy
-	
-	return no_collision
-
-#endregion
-
 #region editor
 
-var changed_entities: bool = false
 var changed_terrain: bool = false
-
-func remove_swap(arr: Array, index: int) -> void:
-	if index < 0 or index >= arr.size():
-		push_error("Index out of bounds in remove_swap")
-		return
-	var last_index: int = arr.size() - 1
-	if index != last_index:
-		arr[index] = arr[last_index]
-	arr.pop_back()
 
 func should_save_terrain() -> bool:
 	return changed_terrain

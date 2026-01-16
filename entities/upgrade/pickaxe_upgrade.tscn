@@ -1,0 +1,34 @@
+[gd_scene load_steps=7 format=3 uid="uid://j6551jw6lalh"]
+
+[ext_resource type="Texture2D" uid="uid://drlhxmqvkoixv" path="res://assets/sprites/fungi_cave_assets.png" id="1_cskll"]
+[ext_resource type="Script" uid="uid://b3gai7gqfeswj" path="res://entities/upgrade/pickable.gd" id="2_l6q8a"]
+[ext_resource type="Script" uid="uid://c4big2omgxqak" path="res://scripts/player_detection.gd" id="2_tcc10"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_l6q8a"]
+atlas = ExtResource("1_cskll")
+region = Rect2(130, 246, 15, 10)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_v4ysd"]
+atlas = ExtResource("1_cskll")
+region = Rect2(131, 239, 10, 7)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_e550b"]
+radius = 17.029387
+
+[node name="PickaxeUpgrade" type="Sprite2D"]
+texture = SubResource("AtlasTexture_l6q8a")
+centered = false
+script = ExtResource("2_l6q8a")
+
+[node name="Pickaxe" type="Sprite2D" parent="."]
+position = Vector2(1, -7)
+texture = SubResource("AtlasTexture_v4ysd")
+centered = false
+
+[node name="PlayerDetection" type="Area2D" parent="."]
+script = ExtResource("2_tcc10")
+metadata/_custom_type_script = "uid://c4big2omgxqak"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetection"]
+position = Vector2(7, 2)
+shape = SubResource("CircleShape2D_e550b")
