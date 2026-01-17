@@ -16,6 +16,11 @@ func set_response_exit(fn: Callable, is_one_shot: bool) -> void:
 	_response_exit = fn
 	_one_shot_exit = is_one_shot
 
+func is_player_inside() -> bool:
+	for area: Area2D in get_overlapping_areas():
+		if area.is_in_group("Player"): return true
+	return false
+
 func _on_area_entered(area: Area2D) -> void:
 	if area.is_in_group("Player"):
 		_response_enter.call()

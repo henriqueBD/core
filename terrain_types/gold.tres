@@ -7,5 +7,6 @@
 script = ExtResource("1_smy14")
 sprite = ExtResource("2_rhtnx")
 edge_color = Color(1, 0.99607843, 0.6313726, 1)
+background_color = Color(0.35, 0.10873333, 0.021, 1)
 durability = 1
 metadata/_custom_type_script = "uid://0jaudmxqm274"

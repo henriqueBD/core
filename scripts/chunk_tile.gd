@@ -125,8 +125,9 @@ func _initialize_deffered_helper(
 		self.add_child(obj)
 		obj.owner = self
 	
+	var main_node: Node2D = Global.main_node
 	for obj: Node2D in instances_dynamic:
-		Global.main_node.add_child(obj)
+		main_node.add_child(obj)
 	
 	Global.chunk_load.emit(coords)
 

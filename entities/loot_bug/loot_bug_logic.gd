@@ -26,6 +26,7 @@ func _on_hit(_damage: float) -> void:
 	_is_exploding = true
 	sprite_2d.hide()
 	set_physics_process(false)
+	#$CollisionShape2D.queue_free()
 	animated_sprite_2d.play("explode")
 	animated_sprite_2d.animation_finished.connect(_explode_end, CONNECT_ONE_SHOT)
 
