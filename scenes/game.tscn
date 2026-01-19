@@ -37,4 +37,4 @@ _mining_offset = Vector2(0, 0)
 _swing_cooldown = 300.0
 
 [node name="PlayerSpawner" parent="." instance=ExtResource("7_0tnpc")]
-position = Vector2(428, 958)
+position = Vector2(-97, 606)

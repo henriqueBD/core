@@ -2,6 +2,9 @@
 class_name chunk_mng
 extends Node2D
 
+#TODO: Separate chunk loading into a different class,
+#will be easier when different entities need to be loaded outside player range
+
 const chunk_scene: Resource = preload("res://scenes/Chunk_tile.tscn")
 
 const folderPath_debug: String = ""
@@ -245,7 +248,8 @@ func _load_chunk_thread_safe(chunk_to_load_coords: Vector2i) -> void:
 				for obj: Node2D in instances_dynamic:
 					obj.global_position += coords_as_vector2 * Vector2(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE)
 	
-	call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
+	#call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
+	_instantiate_chunk.call_deferred(new_chunk_instance, chunk_to_load_coords)
 	new_chunk_instance.initialize_deffered(
 		chunk_to_load_coords, 
 		terrain_data, 
@@ -309,7 +313,6 @@ func is_rect_in_bounds(rect: Rect2) -> bool:
 	_array_unload_mutex.unlock()
 	
 	return true
-
 
 func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
 	var chunks: Rect2i = _get_rect_bounds(area_rect.position, area_rect.size)
@@ -558,7 +561,7 @@ func add_objects_editor(original_chunk: chunk_tile, entities: obj_chunk) -> void
 		main_node.add_child(instance)
 		instance.owner = main_node
 
-func _is_dynamic_obj(instance: Node2D) -> bool:
+func _is_dynamic_obj(instance: Node) -> bool:
 	if instance as tracking_obj != null: return true
 	for child: Node in instance.get_children():
 		if _is_dynamic_obj(child): return true

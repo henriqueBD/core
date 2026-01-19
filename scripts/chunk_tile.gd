@@ -2,7 +2,9 @@
 class_name chunk_tile
 extends Sprite2D
 
-const MAX_SKIPS: int = 5
+#TODO: Pass the breaking logic into chunk_mng
+# creating a thread for each chunk is bad
+
 const EPSILON: float = 2.0
 
 static var _tile_sprites: Array[Image]
@@ -107,7 +109,6 @@ func _initialize_deffered_helper(
 	img = image
 	tex = sprite
 	texture = sprite
-	
 	_terrain_mask = collision_mask
 	
 	_collision_RID = _init_terrain_collision()
@@ -496,7 +497,7 @@ func eval_break_area_mask_helper(
 			
 			if (!mask.get_bit(x_pos - image_origin_x, y_pos - image_origin_y) or
 				tile_to_eval == TILE_TYPE.AIR or 
-				chunk_mng.tile_durability[tile_to_eval] > eval_force):
+				chunk_mng.tile_durability[tile_to_eval] < eval_force):
 				continue
 			
 			stronger_tiles_dir += Vector2(x_pos, y_pos) - rect_center
@@ -607,8 +608,6 @@ func _fix_borders_helper(coord_tmp: Vector2i) -> void:
 		if img.get_pixelv(coord_tmp) != chunk_mng.tile_edge_colors[target_type]:
 			_terrain_really_changed = true
 			img.set_pixelv(coord_tmp, chunk_mng.tile_edge_colors[target_type])
-
-#endregion
 
 #region editor
 

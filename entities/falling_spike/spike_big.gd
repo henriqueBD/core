@@ -11,6 +11,7 @@ var _timer_self_destroy: float = 0.0
 var _timer_touch: float = 0.0
 var _breaker: TerrainBreaker = TerrainBreaker.init([_mask], BREAK_FORCE, 5, false)
 var _chunks: chunk_mng
+var _set_to_break: bool = false
 
 @onready var tracker: DynamicObjTracker = $DynamicObjTracker
 
@@ -33,9 +34,10 @@ func _fall() -> void:
 	set_physics_process(true)
 
 func _eval_callback(_angle: float) -> void:
+	if _set_to_break: return
+	_set_to_break = true
 	print("Call")
-	#if _timer_touch == 0.0:
-		#_timer_touch = 0.01
+	_timer_touch = 0.01
 
 #Falling logic
 func _physics_process(delta: float) -> void:
