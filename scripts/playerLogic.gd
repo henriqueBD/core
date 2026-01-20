@@ -28,7 +28,6 @@ var _coyote_time_ms: int
 @export var _swing_cooldown: float
 
 @onready var animated_sprite_2d: AnimatedSprite2D = $AnimatedSprite2D
-@onready var editor_logic: Editor = $Editor_logic
 @onready var hitbox_pickaxe: Hitbox = $HitboxPickaxe
 
 var _horizontal_input: float

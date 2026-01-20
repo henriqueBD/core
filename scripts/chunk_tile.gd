@@ -91,7 +91,7 @@ func initialize_deffered(
 
 func _initialize_deffered_helper(
 	key: Vector2i, decompressed_data: PackedByteArray, image: Image, 
-	collision: Array[CollisionPolygon2D], collision_mask: BitMap, 
+	_collision: Array[CollisionPolygon2D], collision_mask: BitMap, 
 	sprite: ImageTexture, instances_static: Array[Node2D], instances_dynamic: Array[Node2D]) -> void:
 	
 	set_process(false)

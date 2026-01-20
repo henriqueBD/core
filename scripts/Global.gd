@@ -34,7 +34,7 @@ const LAYER_HURTBOX: int = 64
 
 var main_node: Node
 var chunks: chunk_mng
-var player_node: Node2D
+var player_node: player_character
 
 var gravity: float = 200
 

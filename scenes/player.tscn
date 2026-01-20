@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3 uid="uid://bpytpor8ff704"]
+[gd_scene load_steps=26 format=3 uid="uid://bpytpor8ff704"]
 
 [ext_resource type="Script" uid="uid://jrujb5o6tdcf" path="res://scripts/playerLogic.gd" id="1_c08b3"]
 [ext_resource type="Texture2D" uid="uid://bdyi45xj4pjja" path="res://assets/sprites/player_sprites/idle.png" id="2_qhqgy"]
@@ -6,7 +6,6 @@
 [ext_resource type="Texture2D" uid="uid://jxdjb6ehabvl" path="res://assets/sprites/player_sprites/air_no_pickaxe.png" id="3_d2wvv"]
 [ext_resource type="Texture2D" uid="uid://yt75ycykpxlr" path="res://assets/sprites/player_sprites/walk-sheet.png" id="3_dqkch"]
 [ext_resource type="Texture2D" uid="uid://d4c8uo4hs3tvk" path="res://assets/sprites/player_sprites/air_hit.png" id="3_fjrip"]
-[ext_resource type="Script" uid="uid://dodoxwja3w1jk" path="res://scripts/player_editor.gd" id="4_dqkch"]
 [ext_resource type="Texture2D" uid="uid://bt872b66ohd5y" path="res://assets/sprites/player_sprites/hit.png" id="4_tuyoq"]
 [ext_resource type="Texture2D" uid="uid://ojifbqmymuxp" path="res://assets/sprites/player_sprites/idle_no_pickaxe.png" id="6_3v2ag"]
 [ext_resource type="Script" uid="uid://42bdabd4okfd" path="res://scripts/hitbox.gd" id="8_smehm"]
@@ -150,10 +149,6 @@ autoplay = "idle"
 
 [node name="StateMachine" type="Node2D" parent="."]
 position = Vector2(-5, 0)
-
-[node name="Editor_logic" type="Node2D" parent="."]
-position = Vector2(-5, 0)
-script = ExtResource("4_dqkch")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, -11)

@@ -19,7 +19,7 @@ static func _init_dictionaty_helper(path: String) -> void:
 
 static func vibe_check() -> void:
 	for path: NodePath in _id_to_path.values():
-		assert(FileAccess.file_exists(path), "Path not found: " + str(path))
+		assert(ResourceLoader.exists(path), "Path not found v2: " + str(path) + str(_id_to_path))
 
 static func hash_string(input: String) -> int:
 	var hash_var: int = 5381

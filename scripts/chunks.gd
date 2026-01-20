@@ -5,7 +5,7 @@ extends Node2D
 #TODO: Separate chunk loading into a different class,
 #will be easier when different entities need to be loaded outside player range
 
-const chunk_scene: Resource = preload("res://scenes/Chunk_tile.tscn")
+const chunk_scene: Resource = preload("res://scenes/chunk_tile.tscn")
 
 const folderPath_debug: String = ""
 const FOLDER_PATH_RELEASE: String = "res://chunks/"
@@ -67,10 +67,10 @@ func _enter_tree() -> void:
 	Entity_loader.vibe_check()
 	
 	if Engine.is_editor_hint():
+		set_process(false)
 		_chunks_load_radius = _chunks_load_radius_editor
 		if editor_stuff_active:
 			late_ready()
-			load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
 		var parent: Node = self.get_parent()
 		if parent:
 			var script: Script = load("res://scripts/objects_signal.gd")
@@ -85,10 +85,7 @@ func _enter_tree() -> void:
 		Global.chunks = self
 		Global.chunk_load.connect(_on_chunk_loaded)
 	
-	if OS.has_feature("editor") or OS.is_debug_build():
-		folderPath = folderPath_debug
-	
-	create_empty_chunk_file()
+	#create_empty_chunk_file()
 	emptyChunkTemplate = FileAccess.get_file_as_bytes(emptyChunkPath)
 	assert(len(emptyChunkTemplate) > 0)
 	for i: int in range(1, len(tile_sprites)):
@@ -123,11 +120,7 @@ func _on_chunk_loaded(load_coord: Vector2i) -> void:
 	_player.set_physics_process(true)
 
 func _process(_delta: float) -> void:
-	if Engine.is_editor_hint():
-		if editor_stuff_active:
-			load_nearby_chunks(EditorInterface.get_editor_viewport_2d().get_mouse_position())
-	else:
-		load_nearby_chunks(_player.global_position)
+	load_nearby_chunks(_player.global_position)
 
 #region Chunk loader
 
@@ -626,6 +619,10 @@ func _convert_obj_pos_to_chunk_local(objs: Array[Node2D], chunk_coords: Vector2i
 
 static func get_chunk_path(chunk_coords: Vector2i) -> String:
 	return FOLDER_PATH_RELEASE + str(chunk_coords.x) + "_" + str(chunk_coords.y) + ".dat"
+
+#static func get_chunk_path(chunk_coords: Vector2i) -> String:
+	#var file_name: String = "{x}_{y}.dat".format({"x": chunk_coords.x, "y": chunk_coords.y})
+	#return FOLDER_PATH_RELEASE.path_join(file_name)
 
 func create_empty_chunk(new_chunk_pos: Vector2i) -> void:
 	var newChunk: chunk_tile = chunk_scene.instantiate()

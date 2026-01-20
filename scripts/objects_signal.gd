@@ -13,7 +13,16 @@ var obj_script: Script
 
 @onready var chunks: chunk_mng = $Chunk
 
-func _enter_tree() -> void:
+#func _enter_tree() -> void:
+	#if !Engine.is_editor_hint():
+		#Global.main_node = self
+		#for c: Node in self.get_children():
+			#if c.get_script() == obj_script:
+				#c.queue_free()
+				#print("Removed editor object")
+		#self.set_script(null)
+
+func _ready() -> void:
 	if !Engine.is_editor_hint():
 		Global.main_node = self
 		for c: Node in self.get_children():
@@ -21,8 +30,8 @@ func _enter_tree() -> void:
 				c.queue_free()
 				print("Removed editor object")
 		self.set_script(null)
-
-func _ready() -> void:
+		return
+	
 	self.set_process(false)
 	
 	if !Engine.is_editor_hint():

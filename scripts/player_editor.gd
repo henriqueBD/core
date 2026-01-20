@@ -211,10 +211,9 @@ func terraform_render() -> void:
 
 func add_chunk() -> void:
 	if Input.is_action_just_pressed("place_object"):
-		var coords: Vector2i = chunk.world_to_chunk_key(cursor_position)
+		var coords: Vector2i = chunk_mng.world_to_chunk_key(cursor_position)
 		chunk.createEmptyChunk(coords)
-	
-	
+
 static func terraform_from_plugin(material_info: Dictionary, mouse_pos: Vector2, b_radius: int, chunk_m: chunk_mng) -> void:
 	if not material_info or not chunk_m:
 		return
