@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="terrain_type_base" load_steps=3 format=3 uid="uid://bs8g6ods6j8yb"]
 
 [ext_resource type="Script" uid="uid://0jaudmxqm274" path="res://terrain_types/_terrain_type_base.gd" id="1_smy14"]
-[ext_resource type="Texture2D" uid="uid://cgxpp8hb8j2ep" path="res://assets/sprites/terrain/gold.png" id="2_rhtnx"]
+[ext_resource type="Texture2D" uid="uid://cgxpp8hb8j2ep" path="res://terrain_types/terrain_sprites/gold.png" id="2_rhtnx"]
 
 [resource]
 script = ExtResource("1_smy14")

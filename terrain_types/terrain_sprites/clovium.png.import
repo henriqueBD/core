@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://hlfdpc23hx17"
-path="res://.godot/imported/dirt.png-09a130457656d04d92b3a5c0f313faea.ctex"
+uid="uid://btbgg4slhqesq"
+path="res://.godot/imported/clovium.png-7d1703a8aa67cada084520831233b975.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/terrain/dirt.png"
-dest_files=["res://.godot/imported/dirt.png-09a130457656d04d92b3a5c0f313faea.ctex"]
+source_file="res://terrain_types/terrain_sprites/clovium.png"
+dest_files=["res://.godot/imported/clovium.png-7d1703a8aa67cada084520831233b975.ctex"]
 
 [params]
 

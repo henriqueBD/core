@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://btwisv5hhhca2"
-path="res://.godot/imported/stone.png-1987a9653b42fc4e906d0bfd5f5ecbfd.ctex"
+uid="uid://ou0dfjdkft0l"
+path="res://.godot/imported/dirt.png-0ea7faeb50d73fc7ea64d6f5d020e476.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/terrain/stone.png"
-dest_files=["res://.godot/imported/stone.png-1987a9653b42fc4e906d0bfd5f5ecbfd.ctex"]
+source_file="res://terrain_types/terrain_sprites/dirt.png"
+dest_files=["res://.godot/imported/dirt.png-0ea7faeb50d73fc7ea64d6f5d020e476.ctex"]
 
 [params]
 

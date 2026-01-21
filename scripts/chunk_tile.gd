@@ -31,7 +31,7 @@ var _image_mutex: Mutex = Mutex.new()
 
 var _scheduled_update: bool
 
-enum TILE_TYPE { AIR, dirt, stone, gold, clovium, metal }
+enum TILE_TYPE { AIR, dirt, stone, gold, clovium, metal, dirt_transition, dirt_deep }
 
 enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
 
@@ -61,13 +61,10 @@ func initialize(c: Vector2i, data_empty: PackedByteArray = []) -> obj_chunk:
 		if data[i] == TILE_TYPE.AIR: 
 			img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[0])
 			continue
-		if !_has_same_neighborsv(grid_img_coords):
-			img.set_pixelv(grid_img_coords, chunk_mng.tile_edge_colors[data[i]])
-		else:
-			img.set_pixelv(
-				grid_img_coords, 
-				_tile_sprites[data[i]].get_pixelv(Vector2i((grid_img_coords)) % _tile_sprites[data[i]].get_size())
-			)
+		img.set_pixelv(
+			grid_img_coords, 
+			_tile_sprites[data[i]].get_pixelv(Vector2i((grid_img_coords)) % _tile_sprites[data[i]].get_size())
+		)
 	
 	tex = ImageTexture.create_from_image(img)
 	texture = tex
@@ -368,14 +365,10 @@ func _recalculate_area_accurate(recalculate_rect_global: Rect2) -> void:
 		for y_pos: int in range(grid_pos_start.y, grid_pos_end.y):
 			var tile: TILE_TYPE = _get_tile(x_pos, y_pos)
 			if tile == TILE_TYPE.AIR: continue
-			if !_has_same_neighbors(x_pos, y_pos):
-				img.set_pixel(x_pos, y_pos, chunk_mng.tile_edge_colors[tile])
-			else:
-				img.set_pixel(
-				x_pos, y_pos, 
-				_tile_sprites[tile].get_pixelv(Vector2i(x_pos, y_pos) % _tile_sprites[tile].get_size())
-				)
-				
+			img.set_pixel(
+			x_pos, y_pos, 
+			_tile_sprites[tile].get_pixelv(Vector2i(x_pos, y_pos) % _tile_sprites[tile].get_size())
+			)
 
 func get_terrain_image() -> Image:
 	var image_res: Image = Image.create_empty(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE, false, Image.FORMAT_RGB8)

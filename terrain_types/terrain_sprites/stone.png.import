@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cgxpp8hb8j2ep"
-path="res://.godot/imported/gold.png-4c7ddfceab12a4add8af1114b85f3d57.ctex"
+uid="uid://btwisv5hhhca2"
+path="res://.godot/imported/stone.png-72a016eff1e6a5239b7f082d2b9b4e11.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/terrain/gold.png"
-dest_files=["res://.godot/imported/gold.png-4c7ddfceab12a4add8af1114b85f3d57.ctex"]
+source_file="res://terrain_types/terrain_sprites/stone.png"
+dest_files=["res://.godot/imported/stone.png-72a016eff1e6a5239b7f082d2b9b4e11.ctex"]
 
 [params]
 

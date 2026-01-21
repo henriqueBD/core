@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="terrain_type_base" load_steps=3 format=3 uid="uid://chouhbv6e32g6"]
 
 [ext_resource type="Script" uid="uid://0jaudmxqm274" path="res://terrain_types/_terrain_type_base.gd" id="1_sg8dv"]
-[ext_resource type="Texture2D" uid="uid://btbgg4slhqesq" path="res://assets/sprites/terrain/clovium.png" id="2_e5mtb"]
+[ext_resource type="Texture2D" uid="uid://btbgg4slhqesq" path="res://terrain_types/terrain_sprites/clovium.png" id="2_e5mtb"]
 
 [resource]
 script = ExtResource("1_sg8dv")

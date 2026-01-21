@@ -44,4 +44,5 @@ func _should_destroy(destroy_bounds: Rect2i) -> bool:
 	return destroy_bounds.intersects(_destroy_check)
 
 func _destroy() -> void:
+	Global.chunks.set_no_respawn(global_position)
 	queue_free()

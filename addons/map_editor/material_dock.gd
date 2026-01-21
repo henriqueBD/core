@@ -4,7 +4,7 @@ extends VBoxContainer
 signal material_selected(info)
 
 
-const TERRAIN_PATH := "res://assets/sprites/terrain"
+const TERRAIN_PATH := "res://terrain_types/terrain_sprites/"
 
 var tile_size: int = 64
 var padding: int = 6
