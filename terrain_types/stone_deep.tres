@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="terrain_type_base" load_steps=3 format=3 uid="uid://dbprle1n2fnge"]
+
+[ext_resource type="Script" uid="uid://0jaudmxqm274" path="res://terrain_types/_terrain_type_base.gd" id="1_fivsu"]
+[ext_resource type="Texture2D" uid="uid://btd4p2lnfloc" path="res://terrain_types/terrain_sprites/stone_deep.png" id="2_fivsu"]
+
+[resource]
+script = ExtResource("1_fivsu")
+sprite = ExtResource("2_fivsu")
+edge_color = Color(0.047058824, 0.05490196, 0.07450981, 1)
+background_color = Color(0.089999996, 0.12, 0.12, 1)
+durability = 2
+metadata/_custom_type_script = "uid://0jaudmxqm274"

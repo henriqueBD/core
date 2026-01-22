@@ -7,6 +7,7 @@ extends Sprite2D
 
 const EPSILON: float = 2.0
 
+#TODO: replace this??
 static var _tile_sprites: Array[Image]
 static var _chunks_loaded: Dictionary[Vector2i, chunk_tile]
 
@@ -16,8 +17,6 @@ var _global_bounds: Rect2i
 var tex: ImageTexture
 var coords: Vector2i = Vector2i(0,0)
 var data: PackedByteArray
-
-var global_pos_cached: Vector2
 
 var entities: obj_chunk
 
@@ -31,7 +30,7 @@ var _image_mutex: Mutex = Mutex.new()
 
 var _scheduled_update: bool
 
-enum TILE_TYPE { AIR, dirt, stone, gold, clovium, metal, dirt_transition, dirt_deep }
+enum TILE_TYPE { AIR, dirt, stone, gold, clovium, metal, dirt_transition, dirt_deep, stone_transition, stone_deep }
 
 enum TILE_POS { CENTER, TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT }
 
@@ -272,7 +271,6 @@ func _create_new_physics_body_threaded() -> RID:
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos: Vector2 = to_local(world_pos)
-	#var local_pos: Vector2 = global_pos_cached - world_pos
 	return Vector2i(floor(local_pos.x), floor(local_pos.y))
 
 func grid_to_world(grid_pos: Vector2i, tile_pos: TILE_POS) -> Vector2:

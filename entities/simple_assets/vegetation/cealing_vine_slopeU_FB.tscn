@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3 uid="uid://b6kh70886d17p"]
+
+[ext_resource type="Script" uid="uid://buigisa8k4h8" path="res://entities/enviroment_entity.gd" id="1_c81xi"]
+[ext_resource type="Texture2D" uid="uid://josnnonoy4ti" path="res://entities/simple_assets/vegetation/vegetation.png" id="2_gsep2"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ksp28"]
+atlas = ExtResource("2_gsep2")
+region = Rect2(128, 139, 22, 38)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_5fdul"]
+size = Vector2(17, 19.5)
+
+[node name="SimpleVine" type="Area2D"]
+script = ExtResource("1_c81xi")
+terrain_relation = 1
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(-11, 0)
+texture = SubResource("AtlasTexture_ksp28")
+centered = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+visible = false
+position = Vector2(-2.5, 10)
+shape = SubResource("RectangleShape2D_5fdul")

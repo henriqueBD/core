@@ -64,7 +64,6 @@ func _on_transform_changed() -> void:
 	_remove_self_from_dict()
 	
 	curr_chunk = new_chunk_pos
-	print(entity_signal.objects_per_chunk)
 
 func changed() -> bool:
 	return start_global_pos != self.global_position

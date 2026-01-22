@@ -58,8 +58,8 @@ func _on_child_entered(node: Node) -> void:
 	if node.name in EXCLUDE: return
 	var is_dynamic: bool = node.has_meta("is_dynamic") or _is_dynamic_obj(node)
 	var node_name: String = node.scene_file_path.get_file().trim_suffix(".tscn")
-	print(node_name)
 	if node_name.is_empty(): return
+	print(node_name + "added")
 	var node_ID: int = Entity_loader.hash_string(node_name)
 	node.set_script(obj_script)
 	node.obj_id = node_ID
