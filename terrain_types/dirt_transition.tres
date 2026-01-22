@@ -7,6 +7,6 @@
 script = ExtResource("1_iaee3")
 sprite = ExtResource("2_iaee3")
 edge_color = Color(0.09411765, 0.13333334, 0.101960786, 1)
-background_color = Color(0.09411765, 0.13333334, 0.101960786, 1)
+background_color = Color(0.10980392, 0.015686275, 0.011764706, 1)
 durability = 1
 metadata/_custom_type_script = "uid://0jaudmxqm274"

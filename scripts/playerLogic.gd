@@ -345,11 +345,11 @@ func _pickaxe_logic() -> void:
 	else:
 		if animated_sprite_2d.flip_h:
 			_breaker_sideway.break_terrain_random_flip_x(
-				_breaker_sideway.bottom_right_to_top_left(rect.position + Vector2(0, rect.size.y))
+				_breaker_sideway.bottom_right_to_top_left(rect.position + Vector2(0, rect.size.y) + _mining_offset)
 			)
 		else:
 			_breaker_sideway.break_terrain_random(
-				_breaker_sideway.bottom_left_to_top_left(rect.position + rect.size)
+				_breaker_sideway.bottom_left_to_top_left(rect.position + rect.size - _mining_offset)
 			)
 	
 	if animated_sprite_2d.flip_h:

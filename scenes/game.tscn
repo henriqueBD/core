@@ -33,7 +33,7 @@ air_speed_accel = 300.0
 ground_speed_max = 140.0
 ground_speed_accel = 600.0
 _mining_level = 1
-_mining_offset = Vector2(0, 0)
+_mining_offset = Vector2(6, 0)
 _swing_cooldown = 300.0
 
 [node name="PlayerSpawner" parent="." instance=ExtResource("7_0tnpc")]

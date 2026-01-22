@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3 uid="uid://c8p7imi472b5u"]
+
+[ext_resource type="Texture2D" uid="uid://josnnonoy4ti" path="res://entities/simple_assets/vegetation/vegetation.png" id="1_5spvo"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_j1uad"]
+atlas = ExtResource("1_5spvo")
+region = Rect2(246, 237, 23, 41)
+
+[node name="Node2D" type="Sprite2D"]
+z_index = -3
+texture = SubResource("AtlasTexture_j1uad")
+centered = false
