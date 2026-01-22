@@ -7,7 +7,6 @@ extends Node2D
 
 const chunk_scene: Resource = preload("res://scenes/chunk_tile.tscn")
 
-const folderPath_debug: String = ""
 const FOLDER_PATH_RELEASE: String = "res://chunks/"
 const terrain_type_folder: String = "res://terrain_types/"
 const meta_unique_id: String = "unique_id"
@@ -120,7 +119,10 @@ func _on_chunk_loaded(load_coord: Vector2i) -> void:
 	_player.set_physics_process(true)
 
 func _process(_delta: float) -> void:
-	load_nearby_chunks(_player.global_position)
+	if _player:
+		load_nearby_chunks(_player.global_position)
+	else:
+		if Engine.is_editor_hint(): set_process(false)
 
 #region Chunk loader
 
