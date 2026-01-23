@@ -20,6 +20,11 @@ func _input(event: InputEvent) -> void:
 	
 	Global.picked_pickaxe = true
 	_remove_pickaxe()
+	var spawn_coords: Vector2 = $SpawnTutorialPoint.global_position
+	var instance: Node2D = (load("res://entities/tutorial/break_tutorial.tscn") as PackedScene).instantiate()
+	add_child(instance)
+	instance.owner = self
+	instance.global_position = spawn_coords
 
 func _remove_pickaxe() -> void:
 	$Pickaxe.queue_free()

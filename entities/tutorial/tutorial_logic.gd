@@ -9,7 +9,6 @@ func _ready() -> void:
 	var player_detection: PlayerDetection = $PlayerDetection
 	player_detection.set_response_enter(_player_entered_pickup_area, false)
 	player_detection.set_response_exit(_player_exited_pickup_area, false)
-	set_process_input(false)
 
 func _player_entered_pickup_area() -> void:
 	visible = true
