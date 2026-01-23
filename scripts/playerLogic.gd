@@ -99,6 +99,8 @@ func change_state(new_state: STATE) -> void:
 	match _curr_state:
 		STATE.idle:
 			_idle_state_leave()
+		STATE.walk:
+			_walk_state_leave()
 		STATE.airborne:
 			_airborne_state_leave()
 	

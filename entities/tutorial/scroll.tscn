@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://delqpf7ac2qpm"]
+
+[ext_resource type="Texture2D" uid="uid://btxltu3jf8tsm" path="res://entities/tutorial/scroll.png" id="1_krp40"]
+
+[node name="Scroll" type="Sprite2D"]
+texture = ExtResource("1_krp40")
+centered = false
