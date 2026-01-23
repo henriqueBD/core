@@ -178,6 +178,7 @@ func _idle_state() -> void:
 
 func _idle_swing_end() -> void:
 	animated_sprite_2d.offset.x = 0
+	_is_swinging = false
 	if Global.picked_pickaxe:
 		animated_sprite_2d.play("idle")
 	else:
@@ -209,6 +210,16 @@ func _walk_state() -> void:
 		change_state(STATE.idle)
 		return
 	
+	if _valid_swing_input():
+		_is_swinging = true
+		if animated_sprite_2d.flip_h:
+			animated_sprite_2d.offset.x = -4
+		else:
+			animated_sprite_2d.offset.x = 4
+		animated_sprite_2d.play("walk_swing")
+		animated_sprite_2d.animation_finished.connect(_walk_swing_end, CONNECT_ONE_SHOT)
+		_pickaxe_logic()
+	
 	velocity.y += gravity_amount * _delta_time
 	
 	if Input.is_action_just_pressed("jump"):
@@ -218,6 +229,21 @@ func _walk_state() -> void:
 		velocity.x = min(velocity.x + (ground_speed_accel * _delta_time), ground_speed_max)
 	else:
 		velocity.x = max(velocity.x - (ground_speed_accel * _delta_time), -ground_speed_max)
+
+func _walk_state_leave() -> void:
+	if animated_sprite_2d.animation_finished.is_connected(_idle_swing_end):
+		animated_sprite_2d.offset = Vector2.ZERO
+		_is_swinging = false
+		animated_sprite_2d.animation_finished.disconnect(_idle_swing_end)
+
+##TODO: NOT FINISHED
+func _walk_swing_end() -> void:
+	animated_sprite_2d.offset = Vector2.ZERO
+	_is_swinging = false
+	if Global.picked_pickaxe:
+		animated_sprite_2d.play("walk")
+	else:
+		animated_sprite_2d.play("walk_no_pickaxe")
 
 # ---------- Jump ----------
 

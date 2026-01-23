@@ -10,6 +10,7 @@ size = Vector2(82, 20)
 [node name="JumpTutorial" type="Sprite2D"]
 texture = ExtResource("1_myfmf")
 script = ExtResource("2_kyr0o")
+one_shot = true
 
 [node name="PlayerDetection" type="Area2D" parent="."]
 script = ExtResource("3_h41cw")

@@ -2,6 +2,8 @@ extends Sprite2D
 
 const SPEED: float = 10
 
+@export var one_shot: bool = false
+
 func _ready() -> void:
 	hide()
 	var player_detection: PlayerDetection = $PlayerDetection
@@ -11,7 +13,9 @@ func _ready() -> void:
 
 func _player_entered_pickup_area() -> void:
 	visible = true
-	set_physics_process(true)
 
 func _player_exited_pickup_area() -> void:
 	visible = false
+	if one_shot:
+		Global.chunks.set_no_respawn(global_position)
+		queue_free()

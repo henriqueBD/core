@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3 uid="uid://bpytpor8ff704"]
+[gd_scene load_steps=29 format=3 uid="uid://bpytpor8ff704"]
 
 [ext_resource type="Script" uid="uid://jrujb5o6tdcf" path="res://scripts/playerLogic.gd" id="1_c08b3"]
 [ext_resource type="Texture2D" uid="uid://bdyi45xj4pjja" path="res://assets/sprites/player_sprites/idle.png" id="2_qhqgy"]
@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://ojifbqmymuxp" path="res://assets/sprites/player_sprites/idle_no_pickaxe.png" id="6_3v2ag"]
 [ext_resource type="Script" uid="uid://42bdabd4okfd" path="res://scripts/hitbox.gd" id="8_smehm"]
 [ext_resource type="Texture2D" uid="uid://brbhq7ec16suf" path="res://assets/sprites/player_sprites/walk-sheet_no_pickaxe.png" id="9_jej6c"]
+[ext_resource type="Texture2D" uid="uid://bs4ugla0sghvt" path="res://assets/sprites/player_sprites/hit_walk_sheet.png" id="10_d2wvv"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_fjrip"]
 atlas = ExtResource("2_qlg0r")
@@ -50,6 +51,14 @@ region = Rect2(0, 0, 20, 25)
 [sub_resource type="AtlasTexture" id="AtlasTexture_qfm1y"]
 atlas = ExtResource("9_jej6c")
 region = Rect2(20, 0, 20, 25)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3v2ag"]
+atlas = ExtResource("10_d2wvv")
+region = Rect2(0, 0, 30, 25)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jej6c"]
+atlas = ExtResource("10_d2wvv")
+region = Rect2(30, 0, 30, 25)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_qlg0r"]
 animations = [{
@@ -122,6 +131,17 @@ animations = [{
 "loop": true,
 "name": &"walk_no_pickaxe",
 "speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3v2ag")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_jej6c")
+}],
+"loop": false,
+"name": &"walk_swing",
+"speed": 10.0
 }]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qhqgy"]
@@ -144,7 +164,7 @@ _mining_offset = Vector2(-3, 0)
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(-2, -12)
 sprite_frames = SubResource("SpriteFrames_qlg0r")
-animation = &"airborne_no_pickaxe"
+animation = &"walk_swing"
 autoplay = "idle"
 
 [node name="StateMachine" type="Node2D" parent="."]
