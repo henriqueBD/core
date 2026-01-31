@@ -339,7 +339,7 @@ func _airborne_state_leave() -> void:
 #endregion
 
 func _valid_swing_input() -> bool:
-	#if !Global.picked_pickaxe: return false
+	if !Global.picked_pickaxe: return false
 	var time_now: int = Time.get_ticks_msec()
 	if Input.is_action_just_pressed("hit_pickaxe") and _last_swing_input + _swing_cooldown < time_now:
 		_last_swing_input = time_now
