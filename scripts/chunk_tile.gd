@@ -101,7 +101,7 @@ func _initialize_deffered_helper(
 	assert(data.size() == Globals.CHUNK_SIZE)
 	
 	entities = obj_chunk.new()
-	global_position = Global.CHUNK_SIDE * key
+	#global_position = Global.CHUNK_SIDE * key
 	img = image
 	tex = sprite
 	texture = sprite
@@ -111,7 +111,7 @@ func _initialize_deffered_helper(
 	_terrain_collision_update(_collision_RID)
 	
 	_global_bounds = Rect2i(
-		self.coords * Globals.CHUNK_SIDE,
+		coords * Globals.CHUNK_SIDE,
 		Vector2i(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE)
 	)
 	
@@ -119,7 +119,7 @@ func _initialize_deffered_helper(
 	
 	for obj: Node2D in instances_static:
 		##Fix later
-		self.add_child(obj)
+		add_child(obj)
 		obj.owner = self
 	
 	var main_node: Node2D = Global.main_node

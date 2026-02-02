@@ -29,11 +29,13 @@ var _player: player_character
 var folderPath: String = FOLDER_PATH_RELEASE
 var _chunks_load_radius: int
 
-var _chunks_dict: Dictionary[Vector2i, chunk_tile] = {}
+## READ ONLY outside chunk_mng class
+var chunks_loaded: Dictionary[Vector2i, chunk_tile] = {}
+
 var _dynamic_entities_loaded: Dictionary[Vector3, bool] = {}
 var _static_entities_skip_load: Dictionary[Vector2, bool] = {}
 var _unloaded_chunks_terrain_modified: Dictionary[Vector2i, BitMap] = {}
-var _chunks_dict_mutex: Mutex = Mutex.new()
+var chunks_loaded_mutex: Mutex = Mutex.new()
 var _chunks_buff_dict: Dictionary[Vector2i, bool]
 
 var _use_multithread: bool = false
@@ -93,7 +95,7 @@ func _enter_tree() -> void:
 	_load_tile_resources()
 	
 	chunk_tile._tile_sprites = tile_sprites
-	chunk_tile._chunks_loaded = _chunks_dict
+	chunk_tile._chunks_loaded = chunks_loaded
 	
 	if _use_multithread: _loader_start()
 
@@ -157,7 +159,7 @@ func _loader_process() -> void:
 			
 			if (chunk_to_load_coords == _chunk_loading or
 				chunk_to_load_coords == _chunk_unloading or
-				_chunks_dict.has(chunk_to_load_coords)):
+				chunks_loaded.has(chunk_to_load_coords)):
 				continue
 			
 			#print("loading from thread " + str(chunk_to_load_coords))
@@ -173,11 +175,11 @@ func _loader_process() -> void:
 			#print("unloading from thread " + str(chunk_to_unload_coords))
 			if (chunk_to_unload_coords == _chunk_loading or
 				chunk_to_unload_coords == _chunk_unloading or
-				!_chunks_dict.has(chunk_to_unload_coords)):
+				!chunks_loaded.has(chunk_to_unload_coords)):
 				continue
 			
 			_chunk_unloading = chunk_to_unload_coords
-			var chunk_to_remove: chunk_tile = _chunks_dict[chunk_to_unload_coords]
+			var chunk_to_remove: chunk_tile = chunks_loaded[chunk_to_unload_coords]
 			
 			if chunk_to_remove.should_save_terrain():
 				_unloaded_chunks_terrain_modified[chunk_to_unload_coords] = chunk_to_remove._terrain_mask
@@ -189,9 +191,9 @@ func _loader_process() -> void:
 			chunk_to_remove.unload()
 			chunk_to_remove.queue_free()
 			
-			_chunks_dict_mutex.lock()
-			_chunks_dict.erase(chunk_to_unload_coords)
-			_chunks_dict_mutex.unlock()
+			chunks_loaded_mutex.lock()
+			chunks_loaded.erase(chunk_to_unload_coords)
+			chunks_loaded_mutex.unlock()
 			_chunk_unloading = Vector2i.MIN
 
 func _load_chunk_thread_safe(chunk_to_load_coords: Vector2i) -> void:
@@ -243,7 +245,6 @@ func _load_chunk_thread_safe(chunk_to_load_coords: Vector2i) -> void:
 				for obj: Node2D in instances_dynamic:
 					obj.global_position += coords_as_vector2 * Vector2(Globals.CHUNK_SIDE, Globals.CHUNK_SIDE)
 	
-	#call_deferred("_instantiate_chunk", new_chunk_instance, chunk_to_load_coords)
 	_instantiate_chunk.call_deferred(new_chunk_instance, chunk_to_load_coords)
 	new_chunk_instance.initialize_deffered(
 		chunk_to_load_coords, 
@@ -282,7 +283,7 @@ func is_chunk_in_bounds(check_coords: Vector2i) -> bool:
 	return FileAccess.file_exists(get_chunk_path(check_coords))
 
 func is_chunk_loaded(world_point: Vector2) -> bool:
-	return _chunks_dict.has(world_to_chunk_key(world_point))
+	return chunks_loaded.has(world_to_chunk_key(world_point))
 
 static func world_to_chunk_key(world_pos: Vector2) -> Vector2i:
 	return Vector2i(
@@ -292,7 +293,7 @@ static func world_to_chunk_key(world_pos: Vector2) -> Vector2i:
 
 func world_to_chunk(world_pos: Vector2) -> chunk_tile:
 	var key: Vector2i = world_to_chunk_key(world_pos)
-	return _chunks_dict[key]
+	return chunks_loaded[key]
 
 func is_rect_in_bounds(rect: Rect2) -> bool:
 	var start_chunk: Vector2i = world_to_chunk_key(rect.position)
@@ -302,7 +303,7 @@ func is_rect_in_bounds(rect: Rect2) -> bool:
 	_array_unload_mutex.lock()
 	for x: int in range(start_chunk.x, end_chunk.x + 1):
 		for y: int in range(start_chunk.y, end_chunk.y + 1):
-			if _chunk_unload_queue.has(Vector2i(x, y)) or !_chunks_dict.has(Vector2i(x, y)):
+			if _chunk_unload_queue.has(Vector2i(x, y)) or !chunks_loaded.has(Vector2i(x, y)):
 				_array_unload_mutex.unlock()
 				return false
 	_array_unload_mutex.unlock()
@@ -318,8 +319,8 @@ func eval_area(area_rect: Rect2, mining_force: int) -> Vector2:
 	for x: int in range(chunks.position.x, chunks.size.x + 1):
 		for y: int in range(chunks.position.y, chunks.size.y + 1):
 			var key: Vector2i = Vector2i(x, y)
-			if _chunks_dict.has(key):
-				var eval_res: Vector4 = _chunks_dict[key].eval_area(area_rect, mining_force)
+			if chunks_loaded.has(key):
+				var eval_res: Vector4 = chunks_loaded[key].eval_area(area_rect, mining_force)
 				weaker_direction += Vector2(eval_res.x, eval_res.y)
 				stronger_direction += Vector2(eval_res.z, eval_res.w)
 	
@@ -344,7 +345,7 @@ func eval_break_area_mask(global_top_left: Vector2, mask: BitMap, mining_force: 
 	for x: int in range(chunks.position.x, chunks.size.x + 1):
 		for y: int in range(chunks.position.y, chunks.size.y + 1):
 			var key: Vector2i = Vector2i(x, y)
-			if _chunks_dict.has(key):
+			if chunks_loaded.has(key):
 				
 				_counter_mutex_eval.lock()
 				_break_id[_curr_id][0] += 1
@@ -354,7 +355,7 @@ func eval_break_area_mask(global_top_left: Vector2, mask: BitMap, mining_force: 
 				_break_id[_curr_id + 1][0] += 1
 				_counter_mutex_break.unlock()
 				
-				_chunks_dict[key].eval_break_tiles_mask(global_top_left, mask, mining_force, eval_force, _curr_id)
+				chunks_loaded[key].eval_break_tiles_mask(global_top_left, mask, mining_force, eval_force, _curr_id)
 	
 	_curr_id += 2
 	
@@ -388,16 +389,16 @@ func change_tiles(world_rect: Rect2, type: chunk_tile.TILE_TYPE) -> void:
 	var chunk_bottom_left: Vector2i = world_to_chunk_key(
 		Vector2(world_rect.position.x + world_rect.size.x, world_rect.position.y + world_rect.size.y))
 	
-	if _chunks_dict.has(chunk_top_left):
-		_chunks_dict[chunk_top_left].change_tiles(world_rect, type)
-	if chunk_top_right != chunk_top_left and _chunks_dict.has(chunk_top_right):
-		_chunks_dict[chunk_top_right].change_tiles(world_rect, type)
-	if chunk_bottom_right != chunk_top_left and _chunks_dict.has(chunk_bottom_right):
-		_chunks_dict[chunk_bottom_right].change_tiles(world_rect, type)
+	if chunks_loaded.has(chunk_top_left):
+		chunks_loaded[chunk_top_left].change_tiles(world_rect, type)
+	if chunk_top_right != chunk_top_left and chunks_loaded.has(chunk_top_right):
+		chunks_loaded[chunk_top_right].change_tiles(world_rect, type)
+	if chunk_bottom_right != chunk_top_left and chunks_loaded.has(chunk_bottom_right):
+		chunks_loaded[chunk_bottom_right].change_tiles(world_rect, type)
 	if (chunk_bottom_left != chunk_top_right and 
 		chunk_bottom_left != chunk_bottom_right and 
-		_chunks_dict.has(chunk_bottom_left)):
-		_chunks_dict[chunk_bottom_left].change_tiles(world_rect, type)
+		chunks_loaded.has(chunk_bottom_left)):
+		chunks_loaded[chunk_bottom_left].change_tiles(world_rect, type)
 
 func break_tiles_mask(global_top_left: Vector2, mask: BitMap, mining_force: int) -> void:
 	var world_rect: Rect2 = Rect2(
@@ -412,8 +413,8 @@ func break_tiles_mask(global_top_left: Vector2, mask: BitMap, mining_force: int)
 	for x: int in range(chunks.position.x, chunks.size.x + 1):
 		for y: int in range(chunks.position.y, chunks.size.y + 1):
 			var key: Vector2i = Vector2i(x, y)
-			if _chunks_dict.has(key):
-				_chunks_dict[key].break_tiles_mask(global_top_left, mask, mining_force, _curr_id)
+			if chunks_loaded.has(key):
+				chunks_loaded[key].break_tiles_mask(global_top_left, mask, mining_force, _curr_id)
 				_counter_mutex_break.lock()
 				_break_id[_curr_id][0] += 1
 				_counter_mutex_break.unlock()
@@ -456,7 +457,7 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 			var chunk_to_check: Vector2i = Vector2i(x_offset, y_offset)
 			if is_chunk_in_bounds(chunk_to_check):
 				_chunks_buff_dict[chunk_to_check] = true
-				if not _chunks_dict.has(chunk_to_check):
+				if not chunks_loaded.has(chunk_to_check):
 					if _use_multithread:
 						_array_load_mutex.lock()
 						_chunk_load_queue.append(chunk_to_check)
@@ -473,7 +474,7 @@ func load_nearby_chunks(global_pos: Vector2) -> void:
 	editor_msg = "Unloading: "
 	
 	var to_remove: PackedVector2Array = []
-	for key: Vector2i in _chunks_dict.keys():
+	for key: Vector2i in chunks_loaded.keys():
 		if not _chunks_buff_dict.has(key):
 			to_remove.append(key)
 	
@@ -507,24 +508,25 @@ func _load_chunk_simple(load_coords: Vector2i) -> void:
 		add_objects(newChunk, entities)
 
 func _instantiate_chunk(new_chunk: chunk_tile, new_chunk_coords: Vector2i) -> void:
+	new_chunk.global_position = new_chunk_coords * Global.CHUNK_SIDE
 	add_child(new_chunk)
 	new_chunk.owner = self
-	_chunks_dict_mutex.lock()
-	_chunks_dict[new_chunk_coords] = new_chunk
-	_chunks_dict_mutex.unlock()
+	chunks_loaded_mutex.lock()
+	chunks_loaded[new_chunk_coords] = new_chunk
+	chunks_loaded_mutex.unlock()
 	_chunk_loading = Vector2i.MIN
 
 func _unload_chunk(unloadCoords: Vector2i) -> void:
-	if !_chunks_dict.has(unloadCoords): return
-	var chunk_to_remove: chunk_tile = _chunks_dict[unloadCoords]
+	if !chunks_loaded.has(unloadCoords): return
+	var chunk_to_remove: chunk_tile = chunks_loaded[unloadCoords]
 	
 	if should_skip_save():
 		chunk_to_remove._terrain_really_changed = false
 		chunk_to_remove.changed_terrain = false
 	
-	_chunks_dict_mutex.lock()
-	_chunks_dict.erase(unloadCoords)
-	_chunks_dict_mutex.unlock()
+	chunks_loaded_mutex.lock()
+	chunks_loaded.erase(unloadCoords)
+	chunks_loaded_mutex.unlock()
 	
 	chunk_to_remove.unload()
 	chunk_to_remove.queue_free()
@@ -631,9 +633,9 @@ func create_empty_chunk(new_chunk_pos: Vector2i) -> void:
 	newChunk.initialize(new_chunk_pos, emptyChunkTemplate)
 	newChunk._save_terrain()
 	add_child(newChunk)
-	_chunks_dict_mutex.lock()
-	_chunks_dict[new_chunk_pos] = newChunk
-	_chunks_dict_mutex.unlock()
+	chunks_loaded_mutex.lock()
+	chunks_loaded[new_chunk_pos] = newChunk
+	chunks_loaded_mutex.unlock()
 
 func create_empty_chunk_file() -> void:
 	var empty_data_decompressed: PackedByteArray = []
@@ -655,7 +657,7 @@ func _cleanup() -> void:
 	_static_entities_skip_load.clear()
 	_dynamic_entities_loaded.clear()
 	_chunks_buff_dict.clear()
-	_chunks_dict.clear()
+	chunks_loaded.clear()
 	_break_id.clear()
 
 func _exit_tree() -> void:
@@ -663,5 +665,5 @@ func _exit_tree() -> void:
 	unload_all_chunks()
 
 func unload_all_chunks() -> void:
-	for k: Vector2i in _chunks_dict.keys():
+	for k: Vector2i in chunks_loaded.keys():
 		_unload_chunk(k)

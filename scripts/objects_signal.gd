@@ -88,8 +88,8 @@ func _lobotomize_node(node: Node) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_EDITOR_PRE_SAVE:
 		for key: Vector2i in objects_per_chunk.keys():
-			if chunks._chunks_dict.has(key):
-				_on_chunk_child_leaving(chunks._chunks_dict[key])
+			if chunks.chunks_loaded.has(key):
+				_on_chunk_child_leaving(chunks.chunks_loaded[key])
 
 func _on_chunk_child_leaving(node: Node) -> void:
 	var chunk: chunk_tile = node as chunk_tile

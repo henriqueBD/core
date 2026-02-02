@@ -259,8 +259,8 @@ func decode_and_load_chunks_from_image(file_name: String) -> void:
 	_chunks._curr_center_chunk = Vector2i(0,0)
 	
 	for reload: Vector2i in chunks_to_reload:
-		if !_chunks._chunks_dict.has(reload): continue
-		var reload_instance := _chunks._chunks_dict[reload]
+		if !_chunks.chunks_loaded.has(reload): continue
+		var reload_instance := _chunks.chunks_loaded[reload]
 		var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(reload))
 		assert(terrain_data.size() == Globals.CHUNK_SIZE)
 		var terrain_image: Image = chunk_tile.create_texture_from_terrain_data(terrain_data, null)
@@ -296,8 +296,8 @@ func decode_single_chunk(chunk_image: Image, coords: Vector2i) -> void:
 		print("Probem trying to save chunk " + str(coords))
 
 func get_chunk_image(coords: Vector2i) -> Image:
-	if _chunks._chunks_dict.has(coords):
-		return _chunks._chunks_dict[coords].get_terrain_image()
+	if _chunks.chunks_loaded.has(coords):
+		return _chunks.chunks_loaded[coords].get_terrain_image()
 	
 	if FileAccess.file_exists(chunk_mng.get_chunk_path(coords)):
 		var terrain_data: PackedByteArray = chunk_tile.decompress_chunk(chunk_tile.get_bytes(coords))
@@ -360,7 +360,7 @@ func _select_chunk_draw(viewport_control: Control) -> void:
 		var chunk_side_scaled: Vector2 = Vector2(Global.CHUNK_SIDE, Global.CHUNK_SIDE) * zoom_ammount
 		viewport_control.draw_rect(
 			Rect2(screen_pos, chunk_side_scaled),
-			 Color(0.0, 0.84, 0.215, 0.5) if _chunks._chunks_dict.has(highlight) else Color(0.704, 0.001, 0.798, 0.5)
+			 Color(0.0, 0.84, 0.215, 0.5) if _chunks.chunks_loaded.has(highlight) else Color(0.704, 0.001, 0.798, 0.5)
 		)
 	
 	var chunk_top_left: Vector2 = _curr_chunk_selected * Global.CHUNK_SIDE
@@ -368,7 +368,7 @@ func _select_chunk_draw(viewport_control: Control) -> void:
 	var chunk_side_scaled: Vector2 = Vector2(Global.CHUNK_SIDE, Global.CHUNK_SIDE) * zoom_ammount
 	viewport_control.draw_rect(
 		Rect2(screen_pos, chunk_side_scaled),
-		 Color(0, 0, 1, 0.5) if _chunks._chunks_dict.has(_curr_chunk_selected) else Color(1, 0, 0, 0.5)
+		 Color(0, 0, 1, 0.5) if _chunks.chunks_loaded.has(_curr_chunk_selected) else Color(1, 0, 0, 0.5)
 	)
 
 #endregion

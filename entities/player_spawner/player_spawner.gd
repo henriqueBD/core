@@ -8,7 +8,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	assert(Global.chunks != null, "WHAT")
-	if Global.chunks._chunks_dict.has(_spawn_chunk):
+	if Global.chunks.chunks_loaded.has(_spawn_chunk):
 		#Spawn player
 		var add_to_main_node: bool = false
 		var _player_instace: player_character
