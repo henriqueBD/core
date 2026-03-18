@@ -1,6 +1,6 @@
 > **Um jogo de plataforma 2D de exploração contínua, apresentando um sistema de terreno totalmente destrutível e carregamento de mundo dinâmico (seamless).**
 
-![Gameplay Showcase GIF](gif_link)
+![Gameplay Showcase GIF](gameplay.gif)
 
 ---
 
