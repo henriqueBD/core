@@ -28,8 +28,6 @@ Em vez de usar colisões estáticas pesadas, o terreno é gerenciado de forma ot
 ### 3. Física e Movimentação Baseada em Estados (State Machine)
 Implementação de um padrão de projeto *Finite State Machine (FSM)* para controlar o jogador. Isso garante que a movimentação seja responsiva, fluida e o código altamente escalável e livre de bugs relacionados a múltiplas ações simultâneas.
 
-![Destruction GIF](TODO:)
-
 ---
 
 ## Tecnologias e Ferramentas
